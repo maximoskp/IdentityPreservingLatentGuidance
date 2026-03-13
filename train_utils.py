@@ -993,6 +993,7 @@ def train_IPLG(
         bar_token_id=None,
         validations_per_epoch=1,
         tqdm_position=0,
+        loss_scheme='fhl', # f: foreign, h: home, l: logits
         freeze_base=True
     ):
     device = transformer_model.device
@@ -1074,7 +1075,8 @@ def train_IPLG(
                 logits_loss = logits_loss_fn(logits.view(-1, logits.size(-1)), harmony_target.view(-1))
 
                 optimizer.zero_grad()
-                loss = foreign_guidance_loss + home_guidance_loss + logits_loss
+                loss = ('f' in loss_scheme)*foreign_guidance_loss + \
+                    ('h' in loss_scheme)*home_guidance_loss + ('l' in loss_scheme)*logits_loss
                 loss.backward()
                 optimizer.step()
                 # scheduler.step()

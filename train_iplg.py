@@ -2,7 +2,7 @@ import GridMLM_tokenizers
 from GridMLM_tokenizers import CSGridMLMTokenizer
 from data_utils import CSGridMLMDataset, CSGridMLM_collate_fn
 from torch.utils.data import DataLoader
-from models import SEFiLMModel, ContrastiveSpaceModel, contrastive_normalized_loss
+from models import SEFiLMModel
 import torch
 from torch.optim import AdamW
 from torch.nn import CrossEntropyLoss
@@ -18,6 +18,7 @@ def main():
     parser = argparse.ArgumentParser(description='Script for training a selected contrastive space.')
 
     # Define arguments
+    parser.add_argument('-s', '--loss_scheme', type=str, help='Loss scheme: "fhl" means foreign, home and loss. Remove letters to keep parts of loss.', required=False)
     parser.add_argument('-g', '--gpu', type=int, help='Specify whether and which GPU will be used by used by index. Not using this argument means use CPU.', required=False)
     parser.add_argument('-e', '--epochs', type=int, help='Specify number of epochs. Defaults to 100.', required=False)
     parser.add_argument('-l', '--learningrate', type=float, help='Specify learning rate. Defaults to 1e-5.', required=False)
@@ -25,6 +26,10 @@ def main():
 
     # Parse the arguments
     args = parser.parse_args()
+    loss_scheme = 'fhl'
+    if args.loss_scheme:
+        loss_scheme = args.loss_scheme
+    lr = 1e-5
     device_name = 'cpu'
     if args.gpu is not None:
         if args.gpu > -1:
@@ -39,21 +44,16 @@ def main():
     if args.batchsize:
         batch_size = args.batchsize
 
-    train_path = 'data/contrastive_dataset/CA_train.pickle'
-    val_path = 'data/contrastive_dataset/CA_test.pickle'
+    train_path = 'data/latent_datasets/CA_train.pickle'
+    val_path = 'data/latent_datasets/CA_test.pickle'
 
     with open(train_path, 'rb') as f:
         train_dataset = pickle.load(f)
     with open(val_path, 'rb') as f:
         val_dataset = pickle.load(f)
 
-    source_dim = train_dataset[0]['latent'].shape[0]
-    transformer_dim = train_dataset[0]['transformer_embeddings'].shape[0]
-
-    collator = latent_MH_collate_fn(pad_id=0)
-
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collator)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collator)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=latent_MH_collate_fn)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=latent_MH_collate_fn)
 
     if device_name == 'cpu':
         device = torch.device('cpu')
@@ -94,20 +94,19 @@ def main():
     optimizer = AdamW(transformer_model.film_parameters(), lr=lr)
 
     # save results
-    results_path = os.path.join( 'results', 'iplg', f'{source_name}.csv' )
+    results_path = os.path.join( 'results', 'iplg', f'iplg_{loss_scheme}_loss.csv' )
     os.makedirs('results', exist_ok=True)
     os.makedirs('results/iplg', exist_ok=True)
 
     os.makedirs('saved_models/', exist_ok=True)
     os.makedirs('saved_models/iplg/', exist_ok=True)
-    save_dir = 'saved_models/lacta/'
-    transformer_path = save_dir + f'{source_name}.pt'
+    save_dir = 'saved_models/iplg/'
+    transformer_path = save_dir + f'iplg_{loss_scheme}_loss.pt'
 
-    train_lacta(
-        transformer_model, contrastive_model, 
-        contrastive_loss_fn, logits_loss_fn,
+    train_IPLG(
+        transformer_model, 
+        latent_loss_fn, logits_loss_fn,
         optimizer, train_loader, val_loader, tokenizer.mask_token_id,
-        source_key,
         epochs=epochs,
         exponent=-1,
         results_path=results_path,
@@ -115,6 +114,7 @@ def main():
         bar_token_id=tokenizer.bar_token_id,
         validations_per_epoch=1,
         tqdm_position=0,
+        loss_scheme=loss_scheme,
         freeze_base=True
     )
 

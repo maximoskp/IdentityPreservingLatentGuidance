@@ -126,13 +126,11 @@ def evaluate_alignment(model, dataloader, source_key, device):
 
 # =========== Contrastive space convergence ==================
 
-def evaluate_contrastive_convergence(
+def evaluate_iplg_convergence(
         transformer_model,
-        contrastive_model,
         val_loader,
         logits_loss_fn,
-        contrastive_loss_fn,
-        source_key,
+        latent_loss_fn,
         mask_token_id,
         bar_token_id,
         device,
@@ -181,23 +179,18 @@ def evaluate_contrastive_convergence(
                 batch_num += 1
                 melody_grid = batch["pianoroll"].to(device)
                 harmony_gt = batch["harmony_ids"].to(device)
-                home_guidance_embeddings = batch[source_key].to(device)
-                mixed_batch_1 = make_mixed_batch(batch, source_key)
-                mixed_batch_2 = make_mixed_batch(mixed_batch_1, source_key)
+                home_guidance_embeddings = batch["latent"].to(device)
+                mixed_batch_1 = make_mixed_batch(batch, "latent")
+                mixed_batch_2 = make_mixed_batch(mixed_batch_1, "latent")
                 if interpolate:
-                    mixed_batch_1 = make_mixed_batch(batch, source_key)
-                    mixed_batch_2 = make_mixed_batch(mixed_batch_1, source_key)
-                    foreign_guidance_embeddings_1 = mixed_batch_1[source_key].to(device)
-                    foreign_guidance_embeddings_2 = mixed_batch_2[source_key].to(device)
-                    z_guidance_1 = contrastive_model.source_proj(foreign_guidance_embeddings_1.to(device))
-                    z_guidance_2 = contrastive_model.source_proj(foreign_guidance_embeddings_2.to(device))
-                    z_foreign_guidance = 0.5*z_guidance_1 + 0.5*z_guidance_2
+                    foreign_guidance_embeddings_1 = mixed_batch_1["latent"].to(device)
+                    foreign_guidance_embeddings_2 = mixed_batch_2["latent"].to(device)
+                    foreign_guidance = 0.5*foreign_guidance_embeddings_1 + 0.5*foreign_guidance_embeddings_2
                 elif extrapolate:
-                    foreign_guidance_embeddings = mixed_batch_1[source_key].to(device)
-                    z_foreign_guidance = 10*contrastive_model.source_proj(foreign_guidance_embeddings.to(device))
+                    foreign_guidance_embeddings = mixed_batch_1["latent"].to(device)
+                    foreign_guidance = 10*foreign_guidance_embeddings
                 else:
-                    foreign_guidance_embeddings = mixed_batch_1[source_key].to(device)
-                    z_foreign_guidance = contrastive_model.source_proj(foreign_guidance_embeddings.to(device))
+                    foreign_guidance = mixed_batch_1["latent"].to(device)
 
                 harmony_input, harmony_target = full_to_partial_masking(
                     harmony_gt,
@@ -210,12 +203,10 @@ def evaluate_contrastive_convergence(
                 logits, hidden = transformer_model(
                     melody_grid.to(device),
                     harmony_input.to(device),
-                    z_foreign_guidance.to(device),
+                    foreign_guidance.to(device),
                     return_hidden=True
                 )
-                # z_guidance, z_transformer, _ = contrastive_model( foreign_guidance_embeddings.to(device), hidden.to(device))
-                z_transformer = contrastive_model.transformer_proj(hidden.to(device))
-                foreign_guidance_loss = contrastive_loss_fn(z_foreign_guidance,z_transformer)
+                foreign_guidance_loss = latent_loss_fn(foreign_guidance,hidden)
 
                 running_foreign_logits_loss += logits_loss_fn(logits.view(-1, logits.size(-1)), harmony_target.view(-1)).item()
                 val_foreign_logits_loss = running_foreign_logits_loss/batch_num
@@ -228,15 +219,13 @@ def evaluate_contrastive_convergence(
                 val_foreign_acc = running_foreign_acc/batch_num
 
                 # Step 2: home attraction validation
-                z_guidance = contrastive_model.source_proj(home_guidance_embeddings.to(device))
                 logits, hidden = transformer_model(
                     melody_grid.to(device),
                     harmony_input.to(device),
-                    z_guidance.to(device),
+                    home_guidance_embeddings.to(device),
                     return_hidden=True
                 )
-                z_guidance, z_transformer, _ = contrastive_model( home_guidance_embeddings.to(device), hidden.to(device))
-                home_guidance_loss = contrastive_loss_fn(z_guidance,z_transformer)
+                home_guidance_loss = latent_loss_fn(home_guidance_embeddings,hidden)
 
                 running_home_logits_loss += logits_loss_fn(logits.view(-1, logits.size(-1)), harmony_target.view(-1)).item()
                 val_home_logits_loss = running_home_logits_loss/batch_num
@@ -261,14 +250,9 @@ def evaluate_contrastive_convergence(
                     None,
                     return_hidden=True
                 )
-                z_transformer = contrastive_model.transformer_proj(hidden.to(device))
-                # z_guidance, z_transformer, _ = contrastive_model( home_guidance_embeddings.to(device), hidden.to(device))
-                no_guidance_to_home_loss = contrastive_loss_fn(z_guidance,z_transformer)
+                no_guidance_to_home_loss = latent_loss_fn(home_guidance_embeddings,hidden)
 
-                # no_guidance_to_home_logits_loss = logits_loss_fn(logits.view(-1, logits.size(-1)), harmony_target.view(-1))
-
-                # z_guidance, z_transformer, _ = contrastive_model( foreign_guidance_embeddings.to(device), hidden.to(device))
-                no_guidance_to_foreign_loss = contrastive_loss_fn(z_foreign_guidance,z_transformer)
+                no_guidance_to_foreign_loss = latent_loss_fn(foreign_guidance,hidden)
 
                 running_no2home_logits_loss += logits_loss_fn(logits.view(-1, logits.size(-1)), harmony_target.view(-1)).item()
                 val_no2home_logits_loss = running_no2home_logits_loss/batch_num
@@ -299,15 +283,15 @@ def evaluate_contrastive_convergence(
         # end with tqdm
     # end with no grad
     return {
-        'val_foreign_loss': val_foreign_loss,
-        'val_home_loss': val_home_loss,
-        'val_no2home_loss': val_no2home_loss,
-        'val_no2foreign_loss': val_no2foreign_loss,
-        'val_home_logits_loss':  val_home_logits_loss,
-        'val_foreign_logits_loss':  val_foreign_logits_loss,
-        'val_no2home_logits_loss': val_no2home_logits_loss,
-        'val_home_acc': val_home_acc,
-        'val_foreign_acc': val_foreign_acc,
-        'val_no2home_acc': val_no2home_acc
+        '0_foreign_loss': val_foreign_loss,
+        '1_home_loss': val_home_loss,
+        '2_no2home_loss': val_no2home_loss,
+        '3_no2foreign_loss': val_no2foreign_loss,
+        '4_home_logits_loss':  val_home_logits_loss,
+        '5_foreign_logits_loss':  val_foreign_logits_loss,
+        '6_no2home_logits_loss': val_no2home_logits_loss,
+        '7_home_acc': val_home_acc,
+        '8_foreign_acc': val_foreign_acc,
+        '9_no2home_acc': val_no2home_acc
     }
-#  end evaluate_contrastive_convergence
+#  end evaluate_iplg_convergence
