@@ -78,6 +78,8 @@ def main():
     for d in wiki_nott_dirs:
         full_dirs.append(os.path.join(parent_dir_wiki_nott, d))
         names.append(d)
+    full_dirs.append('/mnt/ssd2/maximos/data/gjt_melodies')
+    names.append('gjt_CA')
 
     os.makedirs('data', exist_ok=True)
     os.makedirs('data/latent_datasets', exist_ok=True)

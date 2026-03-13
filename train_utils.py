@@ -883,9 +883,9 @@ def validation_IPLG_loop(
         latent_loss_fn, logits_loss_fn,
         epoch,
         step,
-        train_loss, train_accuracy,
+        train_loss, train_logits_loss, train_accuracy,
         train_home_loss, train_foreign_loss,
-        best_val_loss, saving_version,
+        best_val_loss, saving_version, loss_scheme,
         results_path=None, transformer_path=None, tqdm_position=0
     ):
     device = transformer_model.device
@@ -900,6 +900,9 @@ def validation_IPLG_loop(
         val_home_loss = 0
         running_foreign_loss = 0
         running_home_loss = 0
+
+        val_logits_loss = 0
+        running_logits_loss = 0
         batch_num = 0
         print('validation')
         with tqdm(valloader, unit='batch', position=tqdm_position) as tepoch:
@@ -937,7 +940,10 @@ def validation_IPLG_loop(
                 home_guidance_loss = latent_loss_fn(home_guidance_embeddings.to(device), hidden.to(device))
                 logits_loss = logits_loss_fn(logits.view(-1, logits.size(-1)), harmony_target.view(-1))
 
-                loss = foreign_guidance_loss + home_guidance_loss + logits_loss
+                # loss = foreign_guidance_loss + home_guidance_loss + logits_loss
+                loss = ('f' in loss_scheme)*foreign_guidance_loss + \
+                    ('h' in loss_scheme)*home_guidance_loss + \
+                    0.02*('l' in loss_scheme)*logits_loss
 
                 # update loss and accuracy
                 batch_num += 1
@@ -955,6 +961,8 @@ def validation_IPLG_loop(
                 val_foreign_loss = running_foreign_loss/batch_num
                 running_home_loss += home_guidance_loss.item()
                 val_home_loss = running_home_loss/batch_num
+                running_logits_loss += logits_loss.item()
+                val_logits_loss = running_logits_loss/batch_num
 
                 tepoch.set_postfix(
                     loss=val_loss,
@@ -976,9 +984,9 @@ def validation_IPLG_loop(
     if results_path is not None:
         with open( results_path, 'a' ) as f:
             writer = csv.writer(f)
-            writer.writerow( [epoch, step, train_loss, train_foreign_loss, \
+            writer.writerow( [epoch, step, train_loss, train_logits_loss, train_foreign_loss, \
                             train_home_loss, train_accuracy, \
-                            val_loss, val_foreign_loss, val_home_loss, \
+                            val_loss, val_logits_loss, val_foreign_loss, val_home_loss, \
                             val_accuracy, saving_version] )
     return best_val_loss, saving_version
 # end validation_lacta_loop
@@ -1003,9 +1011,9 @@ def train_IPLG(
     # save results and model
     print('results_path:', results_path)
     if results_path is not None:
-        result_fields = ['epoch', 'step', 'train_loss',  'train_foreign_loss', \
+        result_fields = ['epoch', 'step', 'train_loss', 'train_logits_loss',  'train_foreign_loss', \
                         'train_home_loss', 'train_acc', \
-                        'val_loss', 'val_foreign_loss', 'val_home_loss', \
+                        'val_loss', 'val_logits_loss', 'val_foreign_loss', 'val_home_loss', \
                         'val_acc', 'sav_version']
         with open( results_path, 'w' ) as f:
             writer = csv.writer(f)
@@ -1028,6 +1036,9 @@ def train_IPLG(
         train_home_loss = 0
         running_foreign_loss = 0
         running_home_loss = 0
+
+        train_logits_loss = 0
+        running_logits_loss = 0
         batch_num = 0
         
         with tqdm(trainloader, unit='batch', position=tqdm_position) as tepoch:
@@ -1076,7 +1087,8 @@ def train_IPLG(
 
                 optimizer.zero_grad()
                 loss = ('f' in loss_scheme)*foreign_guidance_loss + \
-                    ('h' in loss_scheme)*home_guidance_loss + ('l' in loss_scheme)*logits_loss
+                    ('h' in loss_scheme)*home_guidance_loss + \
+                    0.02*('l' in loss_scheme)*logits_loss
                 loss.backward()
                 optimizer.step()
                 # scheduler.step()
@@ -1097,6 +1109,8 @@ def train_IPLG(
                 train_foreign_loss = running_foreign_loss/batch_num
                 running_home_loss += home_guidance_loss.item()
                 train_home_loss = running_home_loss/batch_num
+                running_logits_loss = logits_loss.item()
+                train_logits_loss = running_logits_loss/batch_num
 
                 tepoch.set_postfix(
                     loss=train_loss,
@@ -1116,11 +1130,13 @@ def train_IPLG(
                         epoch,
                         step,
                         train_loss,
+                        train_logits_loss,
                         train_accuracy,
                         train_home_loss,
                         train_foreign_loss,
                         best_val_loss,
                         saving_version,
+                        loss_scheme,
                         results_path=results_path,
                         transformer_path=transformer_path,
                         tqdm_position=tqdm_position
