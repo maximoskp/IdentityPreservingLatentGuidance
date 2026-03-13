@@ -140,3 +140,27 @@ def CSGridMLM_collate_fn(batch):
         'pianoroll': torch.stack(pianorolls),  # shape: (B, 140, T)
     }
 # end CSGridMLM_collate_fn
+
+
+def latent_MH_collate_fn(batch):
+    """
+    batch: list of dataset items, each one like:
+        {
+            'harmony_ids': List[int],
+            'attention_mask': List[int],
+            'time_sig': List[int],
+            'pianoroll': np.ndarray of shape (140, fixed_length)
+        }
+    """
+    harmony_ids = [torch.tensor(item['harmony_ids'], dtype=torch.long) for item in batch]
+    attention_mask = [torch.tensor(item['attention_mask'], dtype=torch.long) for item in batch]
+    pianorolls = [torch.tensor(item['pianoroll'], dtype=torch.float) for item in batch]
+    latents = [torch.tensor(item['latent'], dtype=torch.float) for item in batch]
+
+    return {
+        'harmony_ids': torch.stack(harmony_ids),  # shape: (B, L)
+        'attention_mask': torch.stack(attention_mask),  # shape: (B, L)
+        'pianoroll': torch.stack(pianorolls),  # shape: (B, 140, T)
+        'latent': torch.stack(latents),  # shape: (B, latent_dim)
+    }
+# end latent_MH_collate_fn
