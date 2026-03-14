@@ -865,8 +865,9 @@ def make_mixed_batch(batch, source_key):
     perm = torch.randperm(B)
 
     # Ensure no element maps to itself
-    while torch.any(perm == torch.arange(B, device=perm.device)):
-        perm = torch.randperm(B)
+    if B > 1:
+        while torch.any(perm == torch.arange(B, device=perm.device)):
+            perm = torch.randperm(B)
 
     mixed_batch = {}
     for k, v in batch.items():
