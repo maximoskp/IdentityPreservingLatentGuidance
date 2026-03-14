@@ -48,7 +48,9 @@ for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
 
     logits_loss_fn =CrossEntropyLoss(ignore_index=-100)
 
-    results = {}
+    results_latent = {}
+    results_logits = {}
+    results_unique = {}
 
     for loss_scheme in ['f', 'fh', 'fhl', 'fl', 'hl', 'l']:
         d_model = 512
@@ -66,7 +68,7 @@ for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
         transformer_model.load_state_dict(checkpoint)
         transformer_model.to(device)
 
-        eval_dict = evaluate_iplg_convergence(
+        eval_latent, eval_logits, eval_unique = evaluate_iplg_convergence(
             transformer_model,
             val_loader,
             logits_loss_fn,
@@ -79,14 +81,32 @@ for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
         )
         print(loss_scheme, ' ------------- ')
         # pprint(eval_dict)
-        results[loss_scheme] = eval_dict
+        results_latent[loss_scheme] = eval_latent
+        results_logits[loss_scheme] = eval_logits
+        results_unique[loss_scheme] = eval_unique
 
-    df = pd.DataFrame(results)
+    df = pd.DataFrame(results_latent)
     df = df.T
-
-    df.to_csv(f'results/loss_scheme_{data_file}_results.csv', float_format='%.6f')
+    df.to_csv(f'results/eval_latent_{data_file}.csv', float_format='%.6f')
     latex_table = df.to_latex(float_format="%.6f")
+    with open(f'results/eval_latent_{data_file}.tex', "w") as f:
+        f.write(latex_table)
+    print(df)
 
-    with open(f'results/loss_scheme_{data_file}_results.tex', "w") as f:
+    df = pd.DataFrame(results_logits)
+    df = df.T
+    df.to_csv(f'results/eval_logits_{data_file}.csv', float_format='%.6f')
+    latex_table = df.to_latex(float_format="%.6f")
+    with open(f'results/eval_logits_{data_file}.tex', "w") as f:
+        f.write(latex_table)
+    print(df)
+
+    df = pd.DataFrame(results_unique)
+    df = df.T
+    df['foreign_strength'] = df['fguide_funique'] / df['fguide_hunique']
+    df['home_strength'] = df['hguide_hunique'] / df['hguide_funique']
+    df.to_csv(f'results/eval_unique_{data_file}.csv', float_format='%.6f')
+    latex_table = df.to_latex(float_format="%.6f")
+    with open(f'results/eval_unique_{data_file}.tex', "w") as f:
         f.write(latex_table)
     print(df)

@@ -7,6 +7,49 @@ import numpy as np
 import os
 from train_utils import make_mixed_batch, full_to_partial_masking
 
+def compute_unique_logit_activations(harmony_gt, foreign_ids, logits):
+    """
+    harmony_gt : [B, L] token ids
+    foreign_ids: [B, L] token ids
+    logits     : [B, D]
+
+    Returns
+    -------
+    home_unique_logits_activations    : [B]
+    foreign_unique_logits_activations : [B]
+    """
+    
+    # B, D = logits.shape
+
+    # Convert logits to probabilities
+    probs = F.softmax(logits, dim=2)   # [B, seq_len, D]
+    probs_sum = probs.sum(axis=1)
+    B, D = probs_sum.shape
+
+    # Create vocabulary masks
+    home_mask = torch.zeros(B, D, dtype=torch.bool, device=logits.device)
+    foreign_mask = torch.zeros(B, D, dtype=torch.bool, device=logits.device)
+
+    home_mask.scatter_(1, harmony_gt, True)
+    foreign_mask.scatter_(1, foreign_ids, True)
+
+    # Unique tokens
+    home_unique_mask = home_mask & (~foreign_mask)
+    foreign_unique_mask = foreign_mask & (~home_mask)
+
+    # Sum probabilities
+    home_unique_sum = (probs_sum * home_unique_mask).sum(dim=1)
+    foreign_unique_sum = (probs_sum * foreign_unique_mask).sum(dim=1)
+
+    # Normalize by total probability mass (softmax sums to 1, but kept explicit)
+    total_prob = probs_sum.sum(dim=1)
+
+    home_unique_logits_activations = home_unique_sum / total_prob
+    foreign_unique_logits_activations = foreign_unique_sum / total_prob
+
+    return home_unique_logits_activations, foreign_unique_logits_activations
+# end compute_unique_logit_activations
+
 def evaluate_iplg_convergence(
         transformer_model,
         val_loader,
@@ -63,7 +106,7 @@ def evaluate_iplg_convergence(
         # with FOREIGN guidance
         # how many home-unique chords are preserved
         running_fguide_hunique = 0
-        fguide_hunique_unique = 0
+        fguide_hunique = 0
         # how many foreign-unique chords are preserved
         running_fguide_funique = 0
         fguide_funique = 0
@@ -88,9 +131,7 @@ def evaluate_iplg_convergence(
                     foreign_guidance = 10*foreign_guidance_embeddings
                 else:
                     foreign_guidance = mixed_batch_1["latent"].to(device)
-                    foreing_ids = mixed_batch_1['harmony_ids'].to(device)
-                    foreign_unique = 
-                    home_unique = 
+                    foreign_ids = mixed_batch_1['harmony_ids'].to(device)
 
                 harmony_input, harmony_target = full_to_partial_masking(
                     harmony_gt,
@@ -111,6 +152,13 @@ def evaluate_iplg_convergence(
                 running_foreign_logits_loss += logits_loss_fn(logits.view(-1, logits.size(-1)), harmony_target.view(-1)).item()
                 val_foreign_logits_loss = running_foreign_logits_loss/batch_num
 
+                if not (interpolate or extrapolate):
+                    tmp_home_unique, tmp_foreign_unique = compute_unique_logit_activations(harmony_gt, foreign_ids, logits)
+                    running_fguide_hunique += tmp_home_unique.sum().item()
+                    running_fguide_funique += tmp_foreign_unique.sum().item()
+                    fguide_hunique = running_fguide_hunique/batch_num
+                    fguide_funique = running_fguide_funique/batch_num
+
                 # accuracy
                 predictions = logits.argmax(dim=-1)
                 # mask = torch.logical_and(harmony_target != harmony_input, harmony_target != -100)
@@ -129,6 +177,13 @@ def evaluate_iplg_convergence(
 
                 running_home_logits_loss += logits_loss_fn(logits.view(-1, logits.size(-1)), harmony_target.view(-1)).item()
                 val_home_logits_loss = running_home_logits_loss/batch_num
+
+                if not (interpolate or extrapolate):
+                    tmp_home_unique, tmp_foreign_unique = compute_unique_logit_activations(harmony_gt, foreign_ids, logits)
+                    running_hguide_hunique += tmp_home_unique.sum().item()
+                    running_hguide_funique += tmp_foreign_unique.sum().item()
+                    hguide_hunique = running_hguide_hunique/batch_num
+                    hguide_funique = running_hguide_funique/batch_num
 
                 # accuracy
                 predictions = logits.argmax(dim=-1)
@@ -187,11 +242,17 @@ def evaluate_iplg_convergence(
         '1_home_loss': val_home_loss,
         '2_no2home_loss': val_no2home_loss,
         '3_no2foreign_loss': val_no2foreign_loss,
+    },{
         '4_home_logits_loss':  val_home_logits_loss,
         '5_foreign_logits_loss':  val_foreign_logits_loss,
         '6_no2home_logits_loss': val_no2home_logits_loss,
         '7_home_acc': val_home_acc,
         '8_foreign_acc': val_foreign_acc,
         '9_no2home_acc': val_no2home_acc
+    },{
+        'fguide_hunique': fguide_hunique,
+        'fguide_funique': fguide_funique,
+        'hguide_hunique': hguide_hunique,
+        'hguide_funique': hguide_funique,
     }
 #  end evaluate_iplg_convergence
