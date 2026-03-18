@@ -51,6 +51,7 @@ for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
     results_latent = {}
     results_logits = {}
     results_unique = {}
+    results_nuc = {}
 
     for loss_scheme in ['f', 'fh', 'fhl', 'fl', 'hl', 'l']:
         d_model = 512
@@ -68,7 +69,7 @@ for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
         transformer_model.load_state_dict(checkpoint)
         transformer_model.to(device)
 
-        eval_latent, eval_logits, eval_unique = evaluate_iplg_convergence(
+        eval_latent, eval_logits, eval_unique, eval_nuc = evaluate_iplg_convergence(
             transformer_model,
             val_loader,
             logits_loss_fn,
@@ -84,6 +85,7 @@ for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
         results_latent[loss_scheme] = eval_latent
         results_logits[loss_scheme] = eval_logits
         results_unique[loss_scheme] = eval_unique
+        results_nuc[loss_scheme] = eval_nuc
 
     df = pd.DataFrame(results_latent)
     df = df.T
@@ -108,5 +110,15 @@ for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
     df.to_csv(f'results/eval_unique_{data_file}.csv', float_format='%.6f')
     latex_table = df.to_latex(float_format="%.6f")
     with open(f'results/eval_unique_{data_file}.tex', "w") as f:
+        f.write(latex_table)
+    print(df)
+
+    df = pd.DataFrame(results_nuc)
+    df = df.T
+    df['foreign_strength'] = df['nucleus_fguide_funique'] / df['nucleus_fguide_hunique']
+    df['home_strength'] = df['nucleus_hguide_hunique'] / df['nucleus_hguide_funique']
+    df.to_csv(f'results/eval_nuc_{data_file}.csv', float_format='%.6f')
+    latex_table = df.to_latex(float_format="%.6f")
+    with open(f'results/eval_nuc_{data_file}.tex', "w") as f:
         f.write(latex_table)
     print(df)

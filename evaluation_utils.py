@@ -7,16 +7,17 @@ import numpy as np
 import os
 from train_utils import make_mixed_batch, full_to_partial_masking
 
-def compute_unique_logit_activations(harmony_gt, foreign_ids, logits):
+def compute_unique_logit_activations(harmony_gt, foreign_ids, logits, threshold=0.9):
     """
-    harmony_gt : [B, L] token ids
-    foreign_ids: [B, L] token ids
-    logits     : [B, D]
+    harmony_gt : [B, L] token ids in ground truth
+    foreign_ids: [B, L] token ids in guiding harmony
+    logits     : [B, seq_len, D] logits produced by the system
+    threshold  : value of per-position survival
 
     Returns
     -------
-    home_unique_logits_activations    : [B]
-    foreign_unique_logits_activations : [B]
+    home_unique_logits_activations    : [B] sum of logit activations for ground truth-unique token ids
+    foreign_unique_logits_activations : [B] sum of logit activations for guiding harmony-unique token ids
     """
     
     # B, D = logits.shape
@@ -47,7 +48,34 @@ def compute_unique_logit_activations(harmony_gt, foreign_ids, logits):
     home_unique_logits_activations = home_unique_sum / total_prob
     foreign_unique_logits_activations = foreign_unique_sum / total_prob
 
-    return home_unique_logits_activations, foreign_unique_logits_activations
+    # ---- position-wise confidence ----
+
+    # Expand masks to sequence dimension
+    home_unique_mask_exp = home_unique_mask.unsqueeze(1)      # [B, 1, D]
+    foreign_unique_mask_exp = foreign_unique_mask.unsqueeze(1)
+
+    # Mask probabilities
+    home_probs = probs * home_unique_mask_exp                # [B, seq_len, D]
+    foreign_probs = probs * foreign_unique_mask_exp
+
+    # Max probability among unique tokens at each position
+    home_max_probs, _ = home_probs.max(dim=2)                # [B, seq_len]
+    foreign_max_probs, _ = foreign_probs.max(dim=2)
+
+    # Check threshold
+    home_confident = (home_max_probs >= threshold)           # [B, seq_len]
+    foreign_confident = (foreign_max_probs >= threshold)
+
+    # Ratio over sequence length
+    home_confident_ratio = home_confident.float().mean(dim=1)     # [B]
+    foreign_confident_ratio = foreign_confident.float().mean(dim=1)
+
+    return (
+        home_unique_logits_activations,
+        foreign_unique_logits_activations,
+        home_confident_ratio,
+        foreign_confident_ratio
+    )
 # end compute_unique_logit_activations
 
 def evaluate_iplg_convergence(
@@ -99,10 +127,16 @@ def evaluate_iplg_convergence(
         # with HOME guidance
         # how many home-unique chords are preserved
         running_hguide_hunique = 0
-        hguide_hunique_unique = 0
+        hguide_hunique = 0
         # how many foreign-unique chords are preserved
         running_hguide_funique = 0
         hguide_funique = 0
+        # how many home-unique chords are surviving 90% threshold
+        running_nucleus_hguide_hunique = 0
+        nucleus_hguide_hunique = 0
+        # how many foreign-unique chords are surviving 90% threshold
+        running_nucleus_hguide_funique = 0
+        nucleus_hguide_funique = 0
         # with FOREIGN guidance
         # how many home-unique chords are preserved
         running_fguide_hunique = 0
@@ -110,6 +144,12 @@ def evaluate_iplg_convergence(
         # how many foreign-unique chords are preserved
         running_fguide_funique = 0
         fguide_funique = 0
+        # how many home-unique chords are surviving 90% threshold
+        running_nucleus_fguide_hunique = 0
+        nucleus_fguide_hunique = 0
+        # how many foreign-unique chords are surviving 90% threshold
+        running_nucleus_fguide_funique = 0
+        nucleus_fguide_funique = 0
 
         batch_num = 0
         print('validation')
@@ -153,11 +193,20 @@ def evaluate_iplg_convergence(
                 val_foreign_logits_loss = running_foreign_logits_loss/batch_num
 
                 if not (interpolate or extrapolate):
-                    tmp_home_unique, tmp_foreign_unique = compute_unique_logit_activations(harmony_gt, foreign_ids, logits)
+                    tmp_home_unique, tmp_foreign_unique, tmp_home_nucleus, tmp_foreign_nucleus = compute_unique_logit_activations(
+                        harmony_gt,
+                        foreign_ids,
+                        logits,
+                        threshold=0.9
+                    )
                     running_fguide_hunique += tmp_home_unique.sum().item()
                     running_fguide_funique += tmp_foreign_unique.sum().item()
+                    running_nucleus_fguide_hunique += tmp_home_nucleus.sum().item()
+                    running_nucleus_fguide_funique += tmp_foreign_nucleus.sum().item()
                     fguide_hunique = running_fguide_hunique/batch_num
                     fguide_funique = running_fguide_funique/batch_num
+                    nucleus_fguide_hunique = running_nucleus_fguide_hunique/batch_num
+                    nucleus_fguide_funique = running_nucleus_fguide_funique/batch_num
 
                 # accuracy
                 predictions = logits.argmax(dim=-1)
@@ -179,11 +228,18 @@ def evaluate_iplg_convergence(
                 val_home_logits_loss = running_home_logits_loss/batch_num
 
                 if not (interpolate or extrapolate):
-                    tmp_home_unique, tmp_foreign_unique = compute_unique_logit_activations(harmony_gt, foreign_ids, logits)
+                    tmp_home_unique, tmp_foreign_unique, tmp_home_nucleus, tmp_foreign_nucleus = compute_unique_logit_activations(
+                        harmony_gt,
+                        foreign_ids,
+                        logits,
+                        threshold=0.9
+                    )
                     running_hguide_hunique += tmp_home_unique.sum().item()
                     running_hguide_funique += tmp_foreign_unique.sum().item()
-                    hguide_hunique = running_hguide_hunique/batch_num
-                    hguide_funique = running_hguide_funique/batch_num
+                    running_nucleus_hguide_hunique += tmp_home_unique.sum().item()
+                    running_nucleus_hguide_funique += tmp_foreign_unique.sum().item()
+                    nucleus_hguide_hunique = running_nucleus_hguide_hunique/batch_num
+                    nucleus_hguide_funique = running_nucleus_hguide_funique/batch_num
 
                 # accuracy
                 predictions = logits.argmax(dim=-1)
@@ -254,5 +310,10 @@ def evaluate_iplg_convergence(
         'fguide_funique': fguide_funique,
         'hguide_hunique': hguide_hunique,
         'hguide_funique': hguide_funique,
+    },{
+        'nucleus_fguide_hunique': nucleus_fguide_hunique,
+        'nucleus_fguide_funique': nucleus_fguide_funique,
+        'nucleus_hguide_hunique': nucleus_hguide_hunique,
+        'nucleus_hguide_funique': nucleus_hguide_funique,
     }
 #  end evaluate_iplg_convergence
