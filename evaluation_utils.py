@@ -58,17 +58,25 @@ def compute_unique_logit_activations(harmony_gt, foreign_ids, logits, threshold=
     home_probs = probs * home_unique_mask_exp                # [B, seq_len, D]
     foreign_probs = probs * foreign_unique_mask_exp
 
-    # Max probability among unique tokens at each position
-    home_max_probs, _ = home_probs.max(dim=2)                # [B, seq_len]
-    foreign_max_probs, _ = foreign_probs.max(dim=2)
+    # # Max probability among unique tokens at each position
+    # home_max_probs, _ = home_probs.max(dim=2)                # [B, seq_len]
+    # foreign_max_probs, _ = foreign_probs.max(dim=2)
+
+    # # Check threshold
+    # home_confident = (home_max_probs >= threshold)           # [B, seq_len]
+    # foreign_confident = (foreign_max_probs >= threshold)
+
+    # # Ratio over sequence length
+    # home_confident_ratio = home_confident.float().mean(dim=1)     # [B]
+    # foreign_confident_ratio = foreign_confident.float().mean(dim=1)
 
     # Check threshold
-    home_confident = (home_max_probs >= threshold)           # [B, seq_len]
-    foreign_confident = (foreign_max_probs >= threshold)
+    home_confident = (home_probs >= threshold).sum()
+    foreign_confident = (foreign_probs >= threshold).sum()
 
     # Ratio over sequence length
-    home_confident_ratio = home_confident.float().mean(dim=1)     # [B]
-    foreign_confident_ratio = foreign_confident.float().mean(dim=1)
+    home_confident_ratio = home_confident.float()/home_unique_mask.sum().float()
+    foreign_confident_ratio = foreign_confident.float()/foreign_unique_mask.sum().float()
 
     return (
         home_unique_logits_activations,
@@ -236,11 +244,13 @@ def evaluate_iplg_convergence(
                     )
                     running_hguide_hunique += tmp_home_unique.sum().item()
                     running_hguide_funique += tmp_foreign_unique.sum().item()
-                    running_nucleus_hguide_hunique += tmp_home_unique.sum().item()
-                    running_nucleus_hguide_funique += tmp_foreign_unique.sum().item()
+                    running_nucleus_hguide_hunique += tmp_home_nucleus.sum().item()
+                    running_nucleus_hguide_funique += tmp_foreign_nucleus.sum().item()
+                    hguide_hunique = running_hguide_hunique/batch_num
+                    hguide_funique = running_hguide_funique/batch_num
                     nucleus_hguide_hunique = running_nucleus_hguide_hunique/batch_num
                     nucleus_hguide_funique = running_nucleus_hguide_funique/batch_num
-
+                    
                 # accuracy
                 predictions = logits.argmax(dim=-1)
                 # mask = torch.logical_and(harmony_target != harmony_input, harmony_target != -100)

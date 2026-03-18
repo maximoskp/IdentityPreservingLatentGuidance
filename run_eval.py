@@ -115,8 +115,8 @@ for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
 
     df = pd.DataFrame(results_nuc)
     df = df.T
-    df['foreign_strength'] = df['nucleus_fguide_funique'] / df['nucleus_fguide_hunique']
-    df['home_strength'] = df['nucleus_hguide_hunique'] / df['nucleus_hguide_funique']
+    # df['foreign_strength'] = df['nucleus_fguide_funique'] / df['nucleus_fguide_hunique']
+    # df['home_strength'] = df['nucleus_hguide_hunique'] / df['nucleus_hguide_funique']
     df.to_csv(f'results/eval_nuc_{data_file}.csv', float_format='%.6f')
     latex_table = df.to_latex(float_format="%.6f")
     with open(f'results/eval_nuc_{data_file}.tex', "w") as f:
