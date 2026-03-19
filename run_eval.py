@@ -51,7 +51,7 @@ for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
     results_latent = {}
     results_logits = {}
     results_unique = {}
-    results_nuc = {}
+    results_conf= {}
 
     for loss_scheme in ['f', 'fh', 'fhl', 'fl', 'hl', 'l']:
         d_model = 512
@@ -68,8 +68,9 @@ for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
         checkpoint = torch.load(f'saved_models/iplg/iplg_{loss_scheme}_loss.pt', map_location=device_name)
         transformer_model.load_state_dict(checkpoint)
         transformer_model.to(device)
+        transformer_model.eval()
 
-        eval_latent, eval_logits, eval_unique, eval_nuc = evaluate_iplg_convergence(
+        eval_latent, eval_logits, eval_unique, eval_conf = evaluate_iplg_convergence(
             transformer_model,
             val_loader,
             logits_loss_fn,
@@ -85,7 +86,7 @@ for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
         results_latent[loss_scheme] = eval_latent
         results_logits[loss_scheme] = eval_logits
         results_unique[loss_scheme] = eval_unique
-        results_nuc[loss_scheme] = eval_nuc
+        results_conf[loss_scheme] = eval_conf
 
     df = pd.DataFrame(results_latent)
     df = df.T
@@ -113,12 +114,12 @@ for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
         f.write(latex_table)
     print(df)
 
-    df = pd.DataFrame(results_nuc)
+    df = pd.DataFrame(results_conf)
     df = df.T
-    # df['foreign_strength'] = df['nucleus_fguide_funique'] / df['nucleus_fguide_hunique']
-    # df['home_strength'] = df['nucleus_hguide_hunique'] / df['nucleus_hguide_funique']
-    df.to_csv(f'results/eval_nuc_{data_file}.csv', float_format='%.6f')
+    # df['foreign_strength'] = df['confident_fguide_funique'] / df['confident_fguide_hunique']
+    # df['home_strength'] = df['confident_hguide_hunique'] / df['confident_hguide_funique']
+    df.to_csv(f'results/eval_conf_{data_file}.csv', float_format='%.6f')
     latex_table = df.to_latex(float_format="%.6f")
-    with open(f'results/eval_nuc_{data_file}.tex', "w") as f:
+    with open(f'results/eval_conf_{data_file}.tex', "w") as f:
         f.write(latex_table)
     print(df)

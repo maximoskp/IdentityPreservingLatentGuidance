@@ -75,8 +75,11 @@ def compute_unique_logit_activations(harmony_gt, foreign_ids, logits, threshold=
     foreign_confident = (foreign_probs >= threshold).sum()
 
     # Ratio over sequence length
-    home_confident_ratio = home_confident.float()/home_unique_mask.sum().float()
-    foreign_confident_ratio = foreign_confident.float()/foreign_unique_mask.sum().float()
+    # home_confident_ratio = home_confident.float()/(home_unique_mask.sum().float()*probs.shape[1])
+    # foreign_confident_ratio = foreign_confident.float()/(foreign_unique_mask.sum().float()*probs.shape[1])
+    # Ratio over batch size
+    home_confident_ratio = home_confident.float()/probs.shape[0]
+    foreign_confident_ratio = foreign_confident.float()/probs.shape[0]
 
     return (
         home_unique_logits_activations,
@@ -140,11 +143,11 @@ def evaluate_iplg_convergence(
         running_hguide_funique = 0
         hguide_funique = 0
         # how many home-unique chords are surviving 90% threshold
-        running_nucleus_hguide_hunique = 0
-        nucleus_hguide_hunique = 0
+        running_confident_hguide_hunique = 0
+        confident_hguide_hunique = 0
         # how many foreign-unique chords are surviving 90% threshold
-        running_nucleus_hguide_funique = 0
-        nucleus_hguide_funique = 0
+        running_confident_hguide_funique = 0
+        confident_hguide_funique = 0
         # with FOREIGN guidance
         # how many home-unique chords are preserved
         running_fguide_hunique = 0
@@ -153,11 +156,11 @@ def evaluate_iplg_convergence(
         running_fguide_funique = 0
         fguide_funique = 0
         # how many home-unique chords are surviving 90% threshold
-        running_nucleus_fguide_hunique = 0
-        nucleus_fguide_hunique = 0
+        running_confident_fguide_hunique = 0
+        confident_fguide_hunique = 0
         # how many foreign-unique chords are surviving 90% threshold
-        running_nucleus_fguide_funique = 0
-        nucleus_fguide_funique = 0
+        running_confident_fguide_funique = 0
+        confident_fguide_funique = 0
 
         batch_num = 0
         print('validation')
@@ -201,20 +204,19 @@ def evaluate_iplg_convergence(
                 val_foreign_logits_loss = running_foreign_logits_loss/batch_num
 
                 if not (interpolate or extrapolate):
-                    tmp_home_unique, tmp_foreign_unique, tmp_home_nucleus, tmp_foreign_nucleus = compute_unique_logit_activations(
+                    tmp_home_unique, tmp_foreign_unique, tmp_home_confident, tmp_foreign_confident = compute_unique_logit_activations(
                         harmony_gt,
                         foreign_ids,
-                        logits,
-                        threshold=0.9
+                        logits
                     )
                     running_fguide_hunique += tmp_home_unique.sum().item()
                     running_fguide_funique += tmp_foreign_unique.sum().item()
-                    running_nucleus_fguide_hunique += tmp_home_nucleus.sum().item()
-                    running_nucleus_fguide_funique += tmp_foreign_nucleus.sum().item()
+                    running_confident_fguide_hunique += tmp_home_confident.sum().item()
+                    running_confident_fguide_funique += tmp_foreign_confident.sum().item()
                     fguide_hunique = running_fguide_hunique/batch_num
                     fguide_funique = running_fguide_funique/batch_num
-                    nucleus_fguide_hunique = running_nucleus_fguide_hunique/batch_num
-                    nucleus_fguide_funique = running_nucleus_fguide_funique/batch_num
+                    confident_fguide_hunique = running_confident_fguide_hunique/batch_num
+                    confident_fguide_funique = running_confident_fguide_funique/batch_num
 
                 # accuracy
                 predictions = logits.argmax(dim=-1)
@@ -236,20 +238,19 @@ def evaluate_iplg_convergence(
                 val_home_logits_loss = running_home_logits_loss/batch_num
 
                 if not (interpolate or extrapolate):
-                    tmp_home_unique, tmp_foreign_unique, tmp_home_nucleus, tmp_foreign_nucleus = compute_unique_logit_activations(
+                    tmp_home_unique, tmp_foreign_unique, tmp_home_confident, tmp_foreign_confident = compute_unique_logit_activations(
                         harmony_gt,
                         foreign_ids,
-                        logits,
-                        threshold=0.9
+                        logits
                     )
                     running_hguide_hunique += tmp_home_unique.sum().item()
                     running_hguide_funique += tmp_foreign_unique.sum().item()
-                    running_nucleus_hguide_hunique += tmp_home_nucleus.sum().item()
-                    running_nucleus_hguide_funique += tmp_foreign_nucleus.sum().item()
+                    running_confident_hguide_hunique += tmp_home_confident.sum().item()
+                    running_confident_hguide_funique += tmp_foreign_confident.sum().item()
                     hguide_hunique = running_hguide_hunique/batch_num
                     hguide_funique = running_hguide_funique/batch_num
-                    nucleus_hguide_hunique = running_nucleus_hguide_hunique/batch_num
-                    nucleus_hguide_funique = running_nucleus_hguide_funique/batch_num
+                    confident_hguide_hunique = running_confident_hguide_hunique/batch_num
+                    confident_hguide_funique = running_confident_hguide_funique/batch_num
                     
                 # accuracy
                 predictions = logits.argmax(dim=-1)
@@ -321,9 +322,9 @@ def evaluate_iplg_convergence(
         'hguide_hunique': hguide_hunique,
         'hguide_funique': hguide_funique,
     },{
-        'nucleus_fguide_hunique': nucleus_fguide_hunique,
-        'nucleus_fguide_funique': nucleus_fguide_funique,
-        'nucleus_hguide_hunique': nucleus_hguide_hunique,
-        'nucleus_hguide_funique': nucleus_hguide_funique,
+        'confident_fguide_hunique': confident_fguide_hunique,
+        'confident_fguide_funique': confident_fguide_funique,
+        'confident_hguide_hunique': confident_hguide_hunique,
+        'confident_hguide_funique': confident_hguide_funique,
     }
 #  end evaluate_iplg_convergence
