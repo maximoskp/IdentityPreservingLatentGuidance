@@ -9,17 +9,6 @@ from models import SEFiLMModel
 import os
 from music_utils import transpose_score
 
-models_dict = {
-    'DE': DualGridMLMMelHarm,
-    'SE': SEModular,
-    'DE_cross': DE_only_cross,
-    'DE_lp': DE_learned_pos,
-    'DE_no_MHself': DE_no_MHself,
-    'DE_no_Mself': DE_no_Mself,
-    'DE_v0': DualGridMLMMelHarm,
-    'SE_v0': SEModular
-}
-
 def remove_conflicting_rests(flat_part):
     """
     Remove any Rest in a flattened part whose offset coincides with a Note.
@@ -53,6 +42,7 @@ def remove_conflicting_rests(flat_part):
 def nucleus_token_by_token_generate(
         model,
         melody_grid,            # (1, seq_len, input_dim)
+        guidance_vector,        # (1, guidance_dim) or None
         mask_token_id,          # token ID used for masking
         temperature=1.0,        # optional softmax temperature
         pad_token_id=None,      # token ID for <pad>
@@ -61,8 +51,6 @@ def nucleus_token_by_token_generate(
         chord_constraints=None, # chord + bar constraints
         p=0.9,                  # nucleus threshold
         unmasking_order='random', # in ['random', 'start', 'end', 'certain', 'uncertain']
-        num_stages=None,
-        conditioning_vec=None
     ):
     device = melody_grid.device
     seq_len = melody_grid.shape[1]
@@ -86,22 +74,12 @@ def nucleus_token_by_token_generate(
     step = 0
     while (visible_harmony == mask_token_id).any():
         with torch.no_grad():
-            stage = int(
-                ((visible_harmony == mask_token_id).sum().item()/visible_harmony.size().numel())*num_stages
-            )
-            if conditioning_vec is None:
-                logits = model(
-                    melody_grid=melody_grid.to(model.device),
-                    harmony_tokens=visible_harmony.to(model.device),
-                    stage_indices=torch.LongTensor([stage]).to(model.device)
-                )  # (1, seq_len, vocab_size)
-            else:
-                logits = model(
-                    melody_grid=melody_grid.to(model.device),
-                    conditioning_vec=conditioning_vec.to(model.device),
-                    harmony_tokens=visible_harmony.to(model.device),
-                    stage_indices=torch.LongTensor([stage]).to(model.device)
-                )  # (1, seq_len, vocab_size)
+            logits, hidden = model(
+                melody_grid=melody_grid.to(model.device),
+                harmony_tokens=visible_harmony.to(model.device),
+                guidance_embedding=guidance_vector.to(model.device) if guidance_vector is not None else None,
+                return_hidden=True
+            )  # (1, seq_len, vocab_size)
         # --- Masked position selection ---
         masked_positions = (visible_harmony == mask_token_id).squeeze(0).nonzero(as_tuple=True)[0]
         if masked_positions.numel() == 0:
@@ -159,7 +137,7 @@ def nucleus_token_by_token_generate(
         visible_harmony[0, pos] = token
         step += 1
     
-    return visible_harmony
+    return visible_harmony, hidden
 # end nucleus_token_by_token_generate
 
 def overlay_generated_harmony(melody_part, generated_chords, ql_per_16th, skip_steps):
@@ -398,12 +376,17 @@ def generate_files_with_nucleus(
             keep_durations=True,
             normalize_tonality=normalize_tonality,
         )
+        harmony_guide = torch.LongTensor(guide_encoded['harmony_ids']).reshape(1, len(guide_encoded['harmony_ids']))
+        # keep guide ground truth
+        harmony_guide_tokens = []
+        for t in harmony_guide[0].tolist():
+            harmony_guide_tokens.append( tokenizer.ids_to_tokens[t] )
         guidance_vec = get_SE_embeddings_for_sequence(model, guide_encoded['pianoroll'], guide_encoded['harmony_ids'])
     else:
         guidance_vec = None
     
     if create_gen:
-        random_generated_harmony = nucleus_token_by_token_generate(
+        random_generated_harmony, hidden = nucleus_token_by_token_generate(
             model=model,
             melody_grid=melody_grid.to(model.device),
             guidance_vector=guidance_vec,
@@ -460,6 +443,23 @@ def generate_files_with_nucleus(
             midi_file_name = os.path.join(midi_folder_out, f'real_{name_suffix}' + '.mid')
             save_harmonized_score(real_score, out_path=midi_file_name)
         # os.system(f'QT_QPA_PLATFORM=offscreen mscore -o {midi_file_name} {mxl_file_name}')
+    if create_guide and guidance_f_path:
+        guide_score = overlay_generated_harmony(
+            guide_encoded['melody_part'],
+            harmony_guide_tokens,
+            guide_encoded['ql_per_quantum'],
+            guide_encoded['skip_steps']
+        )
+        
+        if normalize_tonality:
+            guide_score = transpose_score(guide_score, guide_encoded['back_interval'])
+        if mxl_folder_out is not None:
+            mxl_file_name = os.path.join(mxl_folder_out, f'guide_{name_suffix}' + '.mxl')
+            save_harmonized_score(guide_score, out_path=mxl_file_name)
+        if midi_folder_out is not None:
+            midi_file_name = os.path.join(midi_folder_out, f'guide_{name_suffix}' + '.mid')
+            save_harmonized_score(guide_score, out_path=midi_file_name)
+        # os.system(f'QT_QPA_PLATFORM=offscreen mscore -o {midi_file_name} {mxl_file_name}')
 
-    return gen_output_tokens, harmony_real_tokens, gen_score, real_score
+    return gen_output_tokens, harmony_real_tokens, harmony_guide_tokens, gen_score, real_score
 # end generate_files_with_nucleus
