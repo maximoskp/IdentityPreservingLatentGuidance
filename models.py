@@ -170,7 +170,7 @@ class FiLMAdapter(nn.Module):
 
         gamma = self.gamma(guidance).unsqueeze(1)
         beta = self.beta(guidance).unsqueeze(1)
-
+        
         return gamma * x + beta
     # end forward
 
@@ -323,7 +323,6 @@ class SEFiLMModel(nn.Module):
         full_seq = self.dropout(full_seq)
 
         encoded = full_seq
-        print('encoded.shape: ', encoded.shape)
 
         for layer in self.encoder_layers:
             encoded = layer(encoded, guidance=guidance_embedding)

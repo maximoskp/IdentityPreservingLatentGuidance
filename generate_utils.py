@@ -383,7 +383,7 @@ def generate_files_with_nucleus(
         harmony_guide_tokens = []
         for t in harmony_guide[0].tolist():
             harmony_guide_tokens.append( tokenizer.ids_to_tokens[t] )
-        guidance_vec = get_SE_embeddings_for_sequence(model, guide_encoded['pianoroll'], guide_encoded['harmony_ids'])
+        guidance_vec = get_SE_embeddings_for_sequence(model, guide_encoded['pianoroll'], guide_encoded['harmony_ids']).unsqueeze(0)
     else:
         guidance_vec = None
     
@@ -412,6 +412,7 @@ def generate_files_with_nucleus(
         harmony_real_tokens.append( tokenizer.ids_to_tokens[t] )
     gen_score = None
     real_score = None
+    guide_score = None
     if create_gen:
         gen_score = overlay_generated_harmony(
             input_encoded['melody_part'],
@@ -422,9 +423,11 @@ def generate_files_with_nucleus(
         if normalize_tonality:
             gen_score = transpose_score(gen_score, input_encoded['back_interval'])
         if mxl_folder_out is not None:
+            os.makedirs(mxl_folder_out, exist_ok=True)
             mxl_file_name = os.path.join(mxl_folder_out, f'gen_{name_suffix}' + '.mxl')
             save_harmonized_score(gen_score, out_path=mxl_file_name)
         if midi_folder_out is not None:
+            os.makedirs(midi_folder_out, exist_ok=True)
             midi_file_name = os.path.join(midi_folder_out, f'gen_{name_suffix}' + '.mid')
             save_harmonized_score(gen_score, out_path=midi_file_name)
         # os.system(f'QT_QPA_PLATFORM=offscreen mscore -o {midi_file_name} {mxl_file_name}')
