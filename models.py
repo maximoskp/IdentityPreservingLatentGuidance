@@ -323,6 +323,7 @@ class SEFiLMModel(nn.Module):
         full_seq = self.dropout(full_seq)
 
         encoded = full_seq
+        print('encoded.shape: ', encoded.shape)
 
         for layer in self.encoder_layers:
             encoded = layer(encoded, guidance=guidance_embedding)

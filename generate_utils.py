@@ -39,107 +39,6 @@ def remove_conflicting_rests(flat_part):
     return cleaned
 # end remove_conflicting_rests
 
-def nucleus_token_by_token_generate(
-        model,
-        melody_grid,            # (1, seq_len, input_dim)
-        guidance_vector,        # (1, guidance_dim) or None
-        mask_token_id,          # token ID used for masking
-        temperature=1.0,        # optional softmax temperature
-        pad_token_id=None,      # token ID for <pad>
-        nc_token_id=None,       # token ID for <nc>
-        force_fill=True,        # disallow <pad>/<nc> before melody ends
-        chord_constraints=None, # chord + bar constraints
-        p=0.9,                  # nucleus threshold
-        unmasking_order='random', # in ['random', 'start', 'end', 'certain', 'uncertain']
-    ):
-    device = melody_grid.device
-    seq_len = melody_grid.shape[1]
-
-    # --- 1. Initialize ---
-    visible_harmony = torch.full((1, seq_len), mask_token_id, dtype=torch.long, device=device)
-    if chord_constraints is not None:
-        idxs = torch.logical_and(chord_constraints != nc_token_id,
-                                 chord_constraints != pad_token_id)
-        visible_harmony[idxs] = chord_constraints[idxs]
-    # Compute last active melody index if forcing fill
-    if force_fill:
-        active = (melody_grid != 0).any(dim=-1).squeeze(0)  # shape: (seq_len,)
-        try:
-            last_active_index = active.nonzero(as_tuple=True)[0].max().item()
-        except:
-            last_active_index = -1
-    else:
-        last_active_index = -1
-
-    step = 0
-    while (visible_harmony == mask_token_id).any():
-        with torch.no_grad():
-            logits, hidden = model(
-                melody_grid=melody_grid.to(model.device),
-                harmony_tokens=visible_harmony.to(model.device),
-                guidance_embedding=guidance_vector.to(model.device) if guidance_vector is not None else None,
-                return_hidden=True
-            )  # (1, seq_len, vocab_size)
-        # --- Masked position selection ---
-        masked_positions = (visible_harmony == mask_token_id).squeeze(0).nonzero(as_tuple=True)[0]
-        if masked_positions.numel() == 0:
-            break
-
-        probs = torch.softmax(logits[0, masked_positions] / temperature, dim=-1)
-        entropies = -(probs * probs.clamp_min(1e-9).log()).sum(dim=-1)
-
-        if unmasking_order == 'random':
-            pos = masked_positions[torch.randint(0, masked_positions.numel(), (1,))].item()
-        elif unmasking_order == 'uncertain':
-            pos = masked_positions[torch.argmax(entropies)].item()
-        elif unmasking_order == 'certain':
-            pos = masked_positions[torch.argmin(entropies)].item()
-        elif unmasking_order == 'start':
-            pos = masked_positions[0].item()
-        elif unmasking_order == 'end':
-            pos = masked_positions[-1].item()
-        else:
-            pos = masked_positions[torch.randint(0, masked_positions.numel(), (1,))].item()
-
-        # Mask out invalid predictions if enforcing force_fill
-        if force_fill and (pad_token_id is not None and nc_token_id is not None):
-            for i in range(seq_len):
-                if i <= last_active_index:
-                    logits[0, i, pad_token_id] = float('-inf')
-                    logits[0, i, nc_token_id] = float('-inf')
-                else:
-                    logits[0, i, :] = float('-inf')
-                    logits[0, i, pad_token_id] = 1.0
-
-        # --- Nucleus sampling step ---
-        logits_pos = logits[0, pos] / temperature
-        logits_pos[ mask_token_id ] = logits_pos.min().item()/100  # prevent selecting mask token
-        probs_pos = torch.softmax(logits_pos, dim=-1)
-
-        # sort probs descending
-        sorted_probs, sorted_idx = torch.sort(probs_pos, descending=True)
-        cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
-
-        # mask out tokens beyond nucleus p
-        nucleus_mask = cumulative_probs <= p
-        nucleus_mask[0] = True  # keep at least one token
-        nucleus_probs = sorted_probs[nucleus_mask]
-        nucleus_idx = sorted_idx[nucleus_mask]
-
-        # renormalize
-        nucleus_probs = nucleus_probs / nucleus_probs.sum()
-
-        # sample
-        sampled_idx = torch.multinomial(nucleus_probs, 1).item()
-        token = nucleus_idx[sampled_idx].item()
-
-        # update harmony
-        visible_harmony[0, pos] = token
-        step += 1
-    
-    return visible_harmony, hidden
-# end nucleus_token_by_token_generate
-
 def overlay_generated_harmony(melody_part, generated_chords, ql_per_16th, skip_steps):
     # create a part for chords in midi format
     # melody_part = melody_part.makeMeasures()
@@ -330,6 +229,109 @@ def get_SE_embeddings_for_sequence(model_SE, pianoroll, harmony_ids):
     return hidden
 # end SE
 
+def nucleus_token_by_token_generate(
+        model,
+        melody_grid,            # (1, seq_len, input_dim)
+        guidance_vector,        # (1, guidance_dim) or None
+        mask_token_id,          # token ID used for masking
+        temperature=1.0,        # optional softmax temperature
+        pad_token_id=None,      # token ID for <pad>
+        nc_token_id=None,       # token ID for <nc>
+        force_fill=True,        # disallow <pad>/<nc> before melody ends
+        chord_constraints=None, # chord + bar constraints
+        p=0.9,                  # nucleus threshold
+        unmasking_order='random', # in ['random', 'start', 'end', 'certain', 'uncertain']
+    ):
+    device = melody_grid.device
+    seq_len = melody_grid.shape[1]
+
+    # --- 1. Initialize ---
+    visible_harmony = torch.full((1, seq_len), mask_token_id, dtype=torch.long, device=device)
+    if chord_constraints is not None:
+        idxs = torch.logical_and(chord_constraints != nc_token_id,
+                                 chord_constraints != pad_token_id)
+        visible_harmony[idxs] = chord_constraints[idxs]
+    # Compute last active melody index if forcing fill
+    if force_fill:
+        active = (melody_grid != 0).any(dim=-1).squeeze(0)  # shape: (seq_len,)
+        try:
+            last_active_index = active.nonzero(as_tuple=True)[0].max().item()
+        except:
+            last_active_index = -1
+    else:
+        last_active_index = -1
+
+    step = 0
+    guidance_embedding=guidance_vector.to(model.device) if guidance_vector is not None else None
+    
+    while (visible_harmony == mask_token_id).any():
+        with torch.no_grad():
+            logits, hidden = model(
+                melody_grid=melody_grid.to(model.device),
+                harmony_tokens=visible_harmony.to(model.device),
+                guidance_embedding=guidance_embedding,
+                return_hidden=True
+            )  # (1, seq_len, vocab_size)
+        # --- Masked position selection ---
+        masked_positions = (visible_harmony == mask_token_id).squeeze(0).nonzero(as_tuple=True)[0]
+        if masked_positions.numel() == 0:
+            break
+
+        probs = torch.softmax(logits[0, masked_positions] / temperature, dim=-1)
+        entropies = -(probs * probs.clamp_min(1e-9).log()).sum(dim=-1)
+
+        if unmasking_order == 'random':
+            pos = masked_positions[torch.randint(0, masked_positions.numel(), (1,))].item()
+        elif unmasking_order == 'uncertain':
+            pos = masked_positions[torch.argmax(entropies)].item()
+        elif unmasking_order == 'certain':
+            pos = masked_positions[torch.argmin(entropies)].item()
+        elif unmasking_order == 'start':
+            pos = masked_positions[0].item()
+        elif unmasking_order == 'end':
+            pos = masked_positions[-1].item()
+        else:
+            pos = masked_positions[torch.randint(0, masked_positions.numel(), (1,))].item()
+
+        # Mask out invalid predictions if enforcing force_fill
+        if force_fill and (pad_token_id is not None and nc_token_id is not None):
+            for i in range(seq_len):
+                if i <= last_active_index:
+                    logits[0, i, pad_token_id] = float('-inf')
+                    logits[0, i, nc_token_id] = float('-inf')
+                else:
+                    logits[0, i, :] = float('-inf')
+                    logits[0, i, pad_token_id] = 1.0
+
+        # --- Nucleus sampling step ---
+        logits_pos = logits[0, pos] / temperature
+        logits_pos[ mask_token_id ] = logits_pos.min().item()/100  # prevent selecting mask token
+        probs_pos = torch.softmax(logits_pos, dim=-1)
+
+        # sort probs descending
+        sorted_probs, sorted_idx = torch.sort(probs_pos, descending=True)
+        cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
+
+        # mask out tokens beyond nucleus p
+        nucleus_mask = cumulative_probs <= p
+        nucleus_mask[0] = True  # keep at least one token
+        nucleus_probs = sorted_probs[nucleus_mask]
+        nucleus_idx = sorted_idx[nucleus_mask]
+
+        # renormalize
+        nucleus_probs = nucleus_probs / nucleus_probs.sum()
+
+        # sample
+        sampled_idx = torch.multinomial(nucleus_probs, 1).item()
+        token = nucleus_idx[sampled_idx].item()
+
+        # update harmony
+        visible_harmony[0, pos] = token
+        step += 1
+    
+    return visible_harmony, hidden
+# end nucleus_token_by_token_generate
+
 def generate_files_with_nucleus(
         model,
         tokenizer,
@@ -461,5 +463,13 @@ def generate_files_with_nucleus(
             save_harmonized_score(guide_score, out_path=midi_file_name)
         # os.system(f'QT_QPA_PLATFORM=offscreen mscore -o {midi_file_name} {mxl_file_name}')
 
-    return gen_output_tokens, harmony_real_tokens, harmony_guide_tokens, gen_score, real_score
+    return {
+        'gen_output_tokens': gen_output_tokens,
+        'harmony_real_tokens': harmony_real_tokens,
+        'harmony_guide_tokens': harmony_guide_tokens,
+        'gen_score': gen_score,
+        'real_score': real_score,
+        'guide_score': guide_score,
+        'hidden': hidden
+    }
 # end generate_files_with_nucleus
