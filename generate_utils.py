@@ -387,6 +387,7 @@ def generate_files_with_nucleus(
     else:
         guidance_vec = None
     
+    hidden = None
     if create_gen:
         random_generated_harmony, hidden = nucleus_token_by_token_generate(
             model=model,
@@ -442,9 +443,11 @@ def generate_files_with_nucleus(
         if normalize_tonality:
             real_score = transpose_score(real_score, input_encoded['back_interval'])
         if mxl_folder_out is not None:
+            os.makedirs(mxl_folder_out, exist_ok=True)
             mxl_file_name = os.path.join(mxl_folder_out, f'real_{name_suffix}' + '.mxl')
             save_harmonized_score(real_score, out_path=mxl_file_name)
         if midi_folder_out is not None:
+            os.makedirs(midi_folder_out, exist_ok=True)
             midi_file_name = os.path.join(midi_folder_out, f'real_{name_suffix}' + '.mid')
             save_harmonized_score(real_score, out_path=midi_file_name)
         # os.system(f'QT_QPA_PLATFORM=offscreen mscore -o {midi_file_name} {mxl_file_name}')
@@ -459,9 +462,11 @@ def generate_files_with_nucleus(
         if normalize_tonality:
             guide_score = transpose_score(guide_score, guide_encoded['back_interval'])
         if mxl_folder_out is not None:
+            os.makedirs(mxl_folder_out, exist_ok=True)
             mxl_file_name = os.path.join(mxl_folder_out, f'guide_{name_suffix}' + '.mxl')
             save_harmonized_score(guide_score, out_path=mxl_file_name)
         if midi_folder_out is not None:
+            os.makedirs(midi_folder_out, exist_ok=True)
             midi_file_name = os.path.join(midi_folder_out, f'guide_{name_suffix}' + '.mid')
             save_harmonized_score(guide_score, out_path=midi_file_name)
         # os.system(f'QT_QPA_PLATFORM=offscreen mscore -o {midi_file_name} {mxl_file_name}')
