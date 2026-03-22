@@ -1,6 +1,8 @@
 saved_models/
 data/
 MIDIs/
+examples_musicXML/
+examples_MIDI/
 
 *.zip
 
