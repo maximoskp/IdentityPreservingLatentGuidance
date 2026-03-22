@@ -99,59 +99,29 @@ else:
 
 def condenced_str_from_token_ids(inp_ids, tokenizer):
     # for computing features
-    chord_type_distribution = [0]*len(tokenizer.qualities)
-    chord_duration_distribution = [0]*8 # for 1, 2, 4, 8, 16, ... 128 consecutive occurances
     tmp_str = ''
     tmp_count = 0
     prev_id = -1
     num_chords = 0
     for t in inp_ids:
-        if prev_id == t:
-            tmp_count += 1
-        else:
-            if prev_id != -1:
-                chord_token = tokenizer.ids_to_tokens[prev_id]
-                tmp_str += f'{tmp_count}x{chord_token}'
-                if chord_token != '<nc>' and chord_token != '<pad>':
-                    if ':' in chord_token:
-                        type_token = chord_token.split(':')[1]
+        if t != tokenizer.bar_token_id:
+            if prev_id == t:
+                tmp_count += 1
+            else:
+                if prev_id != -1:
+                    chord_token = tokenizer.ids_to_tokens[prev_id]
+                    tmp_str += f'{tmp_count}x{chord_token}'
+                    num_chords += 1
+                    if num_chords == 4:
+                        tmp_str += '\n'
+                        num_chords = 0
                     else:
-                        type_token = ''
-                    # update chord type distribution
-                    type_idx = tokenizer.qualities.index(type_token)
-                    chord_type_distribution[ type_idx ] += 1
-                    # update chord duration distribution
-                    chord_duration_distribution[ min( int(np.log2(tmp_count)), 7 ) ] += 1
-                num_chords += 1
-                if num_chords == 4:
-                    tmp_str += '\n'
-                    num_chords = 0
-                else:
-                    tmp_str += '_'
-            tmp_count = 1
-            prev_id = t
+                        tmp_str += '_'
+                tmp_count = 1
+                prev_id = t
     chord_token = tokenizer.ids_to_tokens[prev_id]
     tmp_str += f'{tmp_count}x{chord_token}'
-    if chord_token != '<nc>' and chord_token != '<pad>':
-        if ':' in chord_token:
-            type_token = chord_token.split(':')[1]
-        else:
-            type_token = ''
-        # update chord type distribution
-        type_idx = tokenizer.qualities.index(type_token)
-        chord_type_distribution[ type_idx ] += 1
-        # update chord duration distribution
-        chord_duration_distribution[ min( int(np.log2(tmp_count)), 7 ) ] += 1
-    # normalize features
-    s_tmp = sum(chord_type_distribution)
-    if s_tmp > 0:
-        for i in range(len(chord_type_distribution)):
-            chord_type_distribution[i] /= s_tmp
-    s_tmp = sum(chord_duration_distribution)
-    if s_tmp > 0:
-        for i in range(len(chord_duration_distribution)):
-            chord_duration_distribution[i] /= s_tmp
-    return tmp_str, chord_type_distribution + chord_duration_distribution
+    return tmp_str
 # end condenced_str_from_token_ids
 
 def apply_pca(model, tokenizer, val_dataset, jazz_dataset):
@@ -166,9 +136,15 @@ def apply_pca(model, tokenizer, val_dataset, jazz_dataset):
     for d in tqdm(val_dataset):
         data_all.append(d)
         feats.append(d['latent'])
+        tmp_str = condenced_str_from_token_ids(d['harmony_ids'], tokenizer)
+        z_idxs.append(0)
+        z_tokens.append(tmp_str)
     for d in tqdm(jazz_dataset):
         data_all.append(d)
         feats.append(d['latent'])
+        z_idxs.append(1)
+        tmp_str = condenced_str_from_token_ids(d['harmony_ids'], tokenizer)
+        z_tokens.append(tmp_str)
 
     # z_np = np.array( zs )
     feats_np = np.array(feats)
@@ -339,7 +315,7 @@ def run_harmonization(n_clicks, selected):
         tokenizer,
         input_data['path'],
         guide_data['path'],
-        mxl_folder_out,
+        None,
         midi_folder_out,
         name_suffix='test',
         use_constraints=False,
@@ -348,26 +324,30 @@ def run_harmonization(n_clicks, selected):
         temperature=1.0,
         p=0.9,
         unmasking_order='certain',
-        create_gen = loss_scheme != 'real',
-        create_real = loss_scheme == 'real',
-        create_guide = False
+        create_gen = True,
+        create_real = True,
+        create_guide = True
     )
-    gen_output_tokens = []
-    for t in g['gen_output_tokens'].tolist():
-        gen_output_tokens.append( tokenizer.ids_to_tokens[t] )
+    gen_output_tokens = g['gen_output_tokens']
     # text to present to html
-    gen_output_html, tmp_feats = condenced_str_from_token_ids(g['gen_output_tokens'][0].tolist(), tokenizer)
+    gen_output_html = condenced_str_from_token_ids(g['gen_output_token_ids'][0].tolist(), tokenizer)
     gen_output_html = gen_output_html.split('\n')
     txt = html.Div([
         html.Strong("Harmonized:"),
         *[html.Div(line) for line in gen_output_html],
     ])
     # embedding to apply pca transformation to
-    print('guide-z: ', F.cosine_similarity(torch.FloatTensor(g['hidden']), torch.FloatTensor(guide_data['latent']), dim=-1))
-    print('input-z: ', F.cosine_similarity(torch.FloatTensor(g['hidden']), torch.FloatTensor(input_data['latent']), dim=-1))
+    print('guide-z: ', F.cosine_similarity(
+        g['hidden'].detach().cpu(),
+        torch.FloatTensor(guide_data['latent']), dim=-1
+    ))
+    print('input-z: ', F.cosine_similarity(
+        g['hidden'].detach().cpu(),
+        torch.FloatTensor(input_data['latent']), dim=-1
+    ))
     # appy pca
     # z_pca = pca.transform([z])[0]
-    z_pca = pca.transform(np.array([tmp_feats]))[0]
+    z_pca = pca.transform([g['hidden'].detach().cpu().numpy()])[0]
     # append new point to df
     new_point = {
         'x': z_pca[0],

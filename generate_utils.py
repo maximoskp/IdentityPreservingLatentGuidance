@@ -389,7 +389,7 @@ def generate_files_with_nucleus(
     
     hidden = None
     if create_gen:
-        random_generated_harmony, hidden = nucleus_token_by_token_generate(
+        nucleus_generated_harmony, hidden = nucleus_token_by_token_generate(
             model=model,
             melody_grid=melody_grid.to(model.device),
             guidance_vector=guidance_vec,
@@ -403,7 +403,7 @@ def generate_files_with_nucleus(
             unmasking_order=unmasking_order
         )
         gen_output_tokens = []
-        for t in random_generated_harmony[0].tolist():
+        for t in nucleus_generated_harmony[0].tolist():
             gen_output_tokens.append( tokenizer.ids_to_tokens[t] )
     else:
         gen_output_tokens = None
@@ -473,6 +473,7 @@ def generate_files_with_nucleus(
 
     return {
         'gen_output_tokens': gen_output_tokens,
+        'gen_output_token_ids': nucleus_generated_harmony,
         'harmony_real_tokens': harmony_real_tokens,
         'harmony_guide_tokens': harmony_guide_tokens,
         'gen_score': gen_score,
