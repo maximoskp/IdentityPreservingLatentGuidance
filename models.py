@@ -259,11 +259,8 @@ class SEFiLMModel(nn.Module):
         self.melody_proj = nn.Linear(pianoroll_dim, d_model, device=device)
         self.harmony_embedding = nn.Embedding(chord_vocab_size, d_model, device=device)
 
-        self.seq_len = grid_length * 2
-
-        self.shared_pos = sinusoidal_positional_encoding(
-            self.seq_len, d_model, device
-        )
+        shared = sinusoidal_positional_encoding(self.grid_length, d_model, device)
+        self.shared_pos = torch.cat([shared, shared], dim=1)
 
         self.dropout = nn.Dropout(dropout)
 
@@ -346,6 +343,14 @@ class SEFiLMModel(nn.Module):
             for param in m.parameters():
                 param.requires_grad = True
     # end freeze_base
+
+    def freeze_FiLM(self):
+        for param in self.parameters():
+            param.requires_grad = True
+        for m in self.film_layers:
+            for param in m.parameters():
+                param.requires_grad = False
+    # end freeze_FiLM
 
     def unfreeze_all(self):
         for param in self.parameters():

@@ -446,10 +446,9 @@ def validation_curriculum_loop(curriculum_type, model, valloader, mask_token_id,
                 # Forward pass
                 logits = model(
                     melody_grid.to(device),
-                    # harmony_gt.to(device),
                     harmony_input.to(device),
-                    conditioning_vec,
-                    stage_indices
+                    None,
+                    False
                 )
 
                 # Compute loss only on masked tokens
@@ -551,6 +550,7 @@ def train_with_curriculum(
             for batch in tepoch:
                 perplexity_metric.reset()
                 model.train()
+                model.freeze_FiLM()
                 melody_grid = batch["pianoroll"].to(device)    # (B, L, prDim)
                 harmony_gt = batch["harmony_ids"].to(device)     # (B, L)
                 if condition_dim is not None:
@@ -585,10 +585,9 @@ def train_with_curriculum(
                 # Forward pass
                 logits = model(
                     melody_grid.to(device),
-                    # harmony_gt.to(device),
                     harmony_input.to(device),
-                    conditioning_vec,
-                    stage_indices
+                    None,
+                    False
                 )
 
                 # Compute loss only on masked tokens
