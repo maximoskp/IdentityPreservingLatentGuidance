@@ -58,7 +58,7 @@ for loss_scheme in ['real', 'none', 'f', 'fh', 'fhl', 'hl', 'l']:
             use_constraints=False,
             intertwine_bar_info=False, # no bar default
             normalize_tonality=False,
-            temperature=1.0,
+            temperature=0.5,
             p=0.9,
             unmasking_order='certain',
             create_gen = loss_scheme != 'real',
