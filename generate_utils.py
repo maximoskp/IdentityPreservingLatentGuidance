@@ -407,6 +407,7 @@ def generate_files_with_nucleus(
             gen_output_tokens.append( tokenizer.ids_to_tokens[t] )
     else:
         gen_output_tokens = None
+        nucleus_generated_harmony = None
     # keep ground truth
     harmony_real_tokens = []
     for t in harmony_real[0].tolist():
@@ -470,6 +471,8 @@ def generate_files_with_nucleus(
             midi_file_name = os.path.join(midi_folder_out, f'guide_{name_suffix}' + '.mid')
             save_harmonized_score(guide_score, out_path=midi_file_name)
         # os.system(f'QT_QPA_PLATFORM=offscreen mscore -o {midi_file_name} {mxl_file_name}')
+    else:
+        harmony_guide_tokens = None
 
     return {
         'gen_output_tokens': gen_output_tokens,

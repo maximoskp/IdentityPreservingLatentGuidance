@@ -18,7 +18,7 @@ tokenizer = CSGridMLMTokenizer(
 midis_path = '/mnt/ssd2/maximos/data/hooktheory_midi_hr/CA_test'
 midi_files = [f for f in os.listdir(midis_path) if f.endswith('.mid') or f.endswith('.midi')]
 
-for loss_scheme in ['real', 'f', 'fh', 'fhl', 'hl', 'l']:
+for loss_scheme in ['real', 'none', 'f', 'fh', 'fhl', 'hl', 'l']:
     print(f'loss scheme: {loss_scheme}')
     for i in tqdm(range(len(midi_files))):
         h_idx = i
@@ -26,17 +26,19 @@ for loss_scheme in ['real', 'f', 'fh', 'fhl', 'hl', 'l']:
         input_f_path = os.path.join(midis_path, midi_files[h_idx])
         guidance_f_path = os.path.join(midis_path, midi_files[g_idx])
         mxl_folder_out = None
-        midi_folder_out = f'MIDIs/testset/{loss_scheme}'
-        name_suffix = (loss_scheme == 'real')*str(h_idx) + \
-            (loss_scheme != 'real')*f'h{h_idx}_g{g_idx}'
+        prefix = 'gen/SE/' if loss_scheme != 'real' else ''
+        midi_folder_out = f'MIDIs/testset/{prefix}{loss_scheme}'
+        name_suffix = (loss_scheme == 'real' or loss_scheme == 'none')*str(h_idx) + \
+            (loss_scheme != 'real' and loss_scheme != 'none')*f'h{h_idx}_g{g_idx}'
 
-        if loss_scheme == 'real':
+        if loss_scheme == 'real' or loss_scheme == 'none':
             model = load_SEFiLMModel(
                 tokenizer,
                 'l',
                 device_name,
                 d_model=512
             )
+            guidance_f_path = None
         else:
             model = load_SEFiLMModel(
                 tokenizer,
