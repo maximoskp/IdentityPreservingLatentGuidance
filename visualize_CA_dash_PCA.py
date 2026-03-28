@@ -319,9 +319,9 @@ def run_harmonization(n_clicks, selected):
         midi_folder_out,
         name_suffix='test',
         use_constraints=False,
-        intertwine_bar_info=False, # no bar default
+        intertwine_bar_info=True, # no bar default
         normalize_tonality=False,
-        temperature=1.0,
+        temperature=0.5,
         p=0.9,
         unmasking_order='certain',
         create_gen = True,

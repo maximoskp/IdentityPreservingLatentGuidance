@@ -56,7 +56,7 @@ for loss_scheme in ['real', 'none', 'f', 'fh', 'fhl', 'hl', 'l']:
             midi_folder_out,
             name_suffix,
             use_constraints=False,
-            intertwine_bar_info=False, # no bar default
+            intertwine_bar_info=True, # no bar default
             normalize_tonality=False,
             temperature=0.5,
             p=0.9,
