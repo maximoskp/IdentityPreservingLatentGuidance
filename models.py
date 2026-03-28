@@ -73,9 +73,9 @@ class SEModel(nn.Module):
         
         # # Positional embeddings (separate for clarity)
         self.shared_pos = sinusoidal_positional_encoding(
-            grid_length + (self.condition_dim is not None), d_model, device
+            grid_length, d_model, device
         )
-        self.full_pos = torch.cat([self.shared_pos[:, :(self.grid_length + (self.condition_dim is not None)), :],
+        self.full_pos = torch.cat([self.shared_pos[:, :self.grid_length, :],
                             self.shared_pos[:, :self.grid_length, :]], dim=1)
         
         # Dropout
@@ -98,7 +98,7 @@ class SEModel(nn.Module):
         self.to(device)
     # end init
 
-    def forward(self, melody_grid, harmony_tokens=None):
+    def forward(self, melody_grid, harmony_tokens=None, dummy_guidance=None, return_hidden_dummy=False):
         """
         melody_grid: (B, grid_length, pianoroll_dim)
         harmony_tokens: (B, grid_length) - optional for training or inference
@@ -134,6 +134,13 @@ class SEModel(nn.Module):
 
         return harmony_output
     # end forward
+
+    def freeze_base(self):
+        pass
+    def freeze_FiLM(self):
+        pass
+    def unfreeze_all(self):
+        pass
 
     # optionally add helpers to extract attention maps across layers:
     def get_attention_maps(self):
