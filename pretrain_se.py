@@ -1,7 +1,7 @@
 import GridMLM_tokenizers
 from GridMLM_tokenizers import CSGridMLMTokenizer
 from data_utils import CSGridMLMDataset, CSGridMLM_collate_fn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, ConcatDataset
 from models import SEFiLMModel
 import torch
 from torch.optim import AdamW
@@ -12,10 +12,19 @@ from train_utils import train_with_curriculum
 batchsize = 8
 device_name = 'cuda:0'
 lr = 1e-4
-epochs = 300
+epochs = 30
 
-train_dir = '/mnt/ssd2/maximos/data/hooktheory_midi_hr/CA_train'
-val_dir = '/mnt/ssd2/maximos/data/hooktheory_midi_hr/CA_test'
+train_hook = '/mnt/ssd2/maximos/data/hooktheory_midi_hr/CA_train'
+val_hook = '/mnt/ssd2/maximos/data/hooktheory_midi_hr/CA_test'
+
+train_gjt = '/mnt/ssd2/maximos/data/gjt_melodies/gjt_CA_train'
+val_gjt = '/mnt/ssd2/maximos/data/gjt_melodies/gjt_CA_test'
+
+train_nott = '/mnt/ssd2/maximos/data/mel_harm_other_CA/nottingham_train'
+val_nott = '/mnt/ssd2/maximos/data/mel_harm_other_CA/nottingham_test'
+
+train_wiki = '/mnt/ssd2/maximos/data/mel_harm_other_CA/wikifonia_train'
+val_wiki = '/mnt/ssd2/maximos/data/mel_harm_other_CA/wikifonia_test'
 
 def main():
     tokenizer = CSGridMLMTokenizer(
@@ -27,8 +36,31 @@ def main():
         use_full_range_melody=False
     )
 
-    train_dataset = CSGridMLMDataset(train_dir, tokenizer, frontloading=True, name_suffix='Q4_L80_bar_PC')
-    val_dataset = CSGridMLMDataset(val_dir, tokenizer, frontloading=True, name_suffix='Q4_L80_bar_PC')
+    print('loading hook')
+    train_dataset_hook = CSGridMLMDataset(train_hook, tokenizer, frontloading=True, name_suffix='Q4_L80_bar_PC')
+    val_dataset_hook = CSGridMLMDataset(val_hook, tokenizer, frontloading=True, name_suffix='Q4_L80_bar_PC')
+    print('loading gjt')
+    train_dataset_gjt = CSGridMLMDataset(train_gjt, tokenizer, frontloading=True, name_suffix='Q4_L80_bar_PC')
+    val_dataset_gjt = CSGridMLMDataset(val_gjt, tokenizer, frontloading=True, name_suffix='Q4_L80_bar_PC')
+    print('loading nott')
+    train_dataset_nott = CSGridMLMDataset(train_nott, tokenizer, frontloading=True, name_suffix='Q4_L80_bar_PC')
+    val_dataset_nott = CSGridMLMDataset(val_nott, tokenizer, frontloading=True, name_suffix='Q4_L80_bar_PC')
+    print('loading wiki')
+    train_dataset_wiki = CSGridMLMDataset(train_wiki, tokenizer, frontloading=True, name_suffix='Q4_L80_bar_PC')
+    val_dataset_wiki = CSGridMLMDataset(val_wiki, tokenizer, frontloading=True, name_suffix='Q4_L80_bar_PC')
+
+    train_dataset = ConcatDataset([
+        train_dataset_hook,
+        train_dataset_gjt,
+        train_dataset_nott,
+        train_dataset_wiki
+    ])
+    val_dataset = ConcatDataset([
+        val_dataset_hook,
+        val_dataset_gjt,
+        val_dataset_nott,
+        val_dataset_wiki
+    ])
 
     trainloader = DataLoader(train_dataset, batch_size=batchsize, shuffle=True, collate_fn=CSGridMLM_collate_fn)
     valloader = DataLoader(val_dataset, batch_size=batchsize, shuffle=False, collate_fn=CSGridMLM_collate_fn)

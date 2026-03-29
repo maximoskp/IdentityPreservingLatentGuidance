@@ -399,7 +399,8 @@ def validation_curriculum_loop(curriculum_type, model, valloader, mask_token_id,
                     num_visible, condition_dim, total_stages, loss_fn, epoch, step, \
                     train_loss, train_accuracy, \
                     train_perplexity, train_token_entropy,
-                    best_val_loss, saving_version, results_path=None, transformer_path=None, tqdm_position=0):
+                    best_val_loss, saving_version, results_path=None, \
+                    transformer_path=None, tqdm_position=0, save_every_epoch=True):
     device = model.device
     model.eval()
     with torch.no_grad():
@@ -477,7 +478,7 @@ def validation_curriculum_loop(curriculum_type, model, valloader, mask_token_id,
             # end for batch
     # end with tqdm
     if transformer_path is not None:
-        if  (curriculum_type == 'f2f') or (best_val_loss > val_loss):
+        if  save_every_epoch or (best_val_loss > val_loss):
             print('saving!')
             saving_version += 1
             best_val_loss = val_loss
@@ -509,7 +510,8 @@ def train_with_curriculum(
     transformer_path=None,
     bar_token_id=None,
     validations_per_epoch=1,
-    tqdm_position=0
+    tqdm_position=0,
+    save_every_epoch=True
 ):
     # device = next(model.parameters()).device
     device = model.device
@@ -640,7 +642,8 @@ def train_with_curriculum(
                         saving_version,
                         results_path=results_path,
                         transformer_path=transformer_path,
-                        tqdm_position=tqdm_position
+                        tqdm_position=tqdm_position,
+                        save_every_epoch=save_every_epoch
                     )
             # end for batch
         # end with tqdm
