@@ -3,7 +3,7 @@ import GridMLM_tokenizers
 from GridMLM_tokenizers import CSGridMLMTokenizer
 from data_utils import CSGridMLMDataset
 import pickle
-from models import SEFiLMModel
+from models import EDFiLMModel
 import os
 import numpy as np
 from tqdm import tqdm
@@ -21,7 +21,7 @@ tokenizer = CSGridMLMTokenizer(
 )
 
 d_model = 512
-model_SE = SEFiLMModel(
+model_SE = EDFiLMModel(
     chord_vocab_size=len(tokenizer.vocab),
     d_model=d_model,
     nhead=8,
@@ -31,26 +31,26 @@ model_SE = SEFiLMModel(
     guidance_dim=d_model,
     device=device,
 )
-checkpoint = torch.load('saved_models/SE/pretrained.pt', map_location=device_name)
+checkpoint = torch.load('saved_models/ED/pretrained.pt', map_location=device_name)
 model_SE.load_state_dict(checkpoint)
 model_SE.eval()
 
-def get_SE_embeddings_for_sequence(pianoroll, harmony_ids):
+def get_ED_embeddings_for_sequence(pianoroll, harmony_ids):
     melody_grid = torch.FloatTensor( pianoroll ).reshape( 1, pianoroll.shape[0], pianoroll.shape[1] )
     harmony_real = torch.LongTensor(harmony_ids).reshape(1, len(harmony_ids))
-    _, hidden = model_SE(
+    _, hidden = model_ED(
         melody_grid=melody_grid.to(model_SE.device),
         harmony_tokens=harmony_real.to(model_SE.device),
         guidance_embedding=None,
         return_hidden=True
     )
     return hidden.detach().cpu().squeeze()
-# end SE
+# end ED
 
 def add_latent_to_dataset(dataset):
     new_dataset = []
     for d in tqdm(dataset):
-        hidden = get_SE_embeddings_for_sequence(d['pianoroll'], d['harmony_ids'])
+        hidden = get_ED_embeddings_for_sequence(d['pianoroll'], d['harmony_ids'])
         d['latent'] = hidden.detach().cpu().numpy()
         new_dataset.append(d)
     return new_dataset
@@ -83,13 +83,14 @@ def main():
 
     os.makedirs('data', exist_ok=True)
     os.makedirs('data/latent_datasets', exist_ok=True)
+    os.makedirs('data/latent_datasets/ED', exist_ok=True)
 
     for d, n in zip(full_dirs, names):
         print(f'running for {n} in path: {d}')
         train_dataset = CSGridMLMDataset(d, tokenizer, frontloading=True, name_suffix='Q4_L80_bar_PC')
         bundled = add_latent_to_dataset(train_dataset)
         print('saving...')
-        with open(f'data/latent_datasets/{n}.pickle', 'wb') as f:
+        with open(f'data/latent_datasets/ED/{n}.pickle', 'wb') as f:
             pickle.dump(bundled, f)
 # end main
 

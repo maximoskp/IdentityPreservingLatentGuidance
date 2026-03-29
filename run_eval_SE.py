@@ -17,7 +17,7 @@ device_name = 'cuda:0'
 batch_size = 128
 
 for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
-    val_path = f'data/latent_datasets/{data_file}'
+    val_path = f'data/latent_datasets/SE/{data_file}'
 
     with open(val_path, 'rb') as f:
         val_dataset = pickle.load(f)
@@ -65,7 +65,7 @@ for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
             guidance_dim=d_model,
             device=device,
         )
-        checkpoint = torch.load(f'saved_models/iplg/iplg_{loss_scheme}_loss.pt', map_location=device_name)
+        checkpoint = torch.load(f'saved_models/iplg/SE/iplg_{loss_scheme}_loss.pt', map_location=device_name)
         transformer_model.load_state_dict(checkpoint)
         transformer_model.to(device)
         transformer_model.eval()
@@ -90,17 +90,17 @@ for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
 
     df = pd.DataFrame(results_latent)
     df = df.T
-    df.to_csv(f'results/eval_latent_{data_file}.csv', float_format='%.6f')
+    df.to_csv(f'results/SE/eval_latent_{data_file}.csv', float_format='%.6f')
     latex_table = df.to_latex(float_format="%.6f")
-    with open(f'results/eval_latent_{data_file}.tex', "w") as f:
+    with open(f'results/SE/eval_latent_{data_file}.tex', "w") as f:
         f.write(latex_table)
     print(df)
 
     df = pd.DataFrame(results_logits)
     df = df.T
-    df.to_csv(f'results/eval_logits_{data_file}.csv', float_format='%.6f')
+    df.to_csv(f'results/SE/eval_logits_{data_file}.csv', float_format='%.6f')
     latex_table = df.to_latex(float_format="%.6f")
-    with open(f'results/eval_logits_{data_file}.tex', "w") as f:
+    with open(f'results/SE/eval_logits_{data_file}.tex', "w") as f:
         f.write(latex_table)
     print(df)
 
@@ -108,9 +108,9 @@ for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
     df = df.T
     df['foreign_strength'] = df['fguide_funique'] / df['fguide_hunique']
     df['home_strength'] = df['hguide_hunique'] / df['hguide_funique']
-    df.to_csv(f'results/eval_unique_{data_file}.csv', float_format='%.6f')
+    df.to_csv(f'results/SE/eval_unique_{data_file}.csv', float_format='%.6f')
     latex_table = df.to_latex(float_format="%.6f")
-    with open(f'results/eval_unique_{data_file}.tex', "w") as f:
+    with open(f'results/SE/eval_unique_{data_file}.tex', "w") as f:
         f.write(latex_table)
     print(df)
 
@@ -118,8 +118,8 @@ for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
     df = df.T
     # df['foreign_strength'] = df['confident_fguide_funique'] / df['confident_fguide_hunique']
     # df['home_strength'] = df['confident_hguide_hunique'] / df['confident_hguide_funique']
-    df.to_csv(f'results/eval_conf_{data_file}.csv', float_format='%.6f')
+    df.to_csv(f'results/SE/eval_conf_{data_file}.csv', float_format='%.6f')
     latex_table = df.to_latex(float_format="%.6f")
-    with open(f'results/eval_conf_{data_file}.tex', "w") as f:
+    with open(f'results/SE/eval_conf_{data_file}.tex', "w") as f:
         f.write(latex_table)
     print(df)

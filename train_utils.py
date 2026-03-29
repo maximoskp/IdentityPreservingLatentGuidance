@@ -482,9 +482,9 @@ def validation_curriculum_loop(curriculum_type, model, valloader, mask_token_id,
             saving_version += 1
             best_val_loss = val_loss
             torch.save(model.state_dict(), transformer_path)
-        if (curriculum_type == 'f2f') and (num_visible in [0, 5, 15, 30, 31, 50, 51]):
-            # save intermediate models at key points
-            torch.save(model.state_dict(), transformer_path[:-3] + f'_nvis{num_visible}.pt')
+        # if (curriculum_type == 'f2f') and (num_visible in [0, 5, 15, 30, 31, 50, 51]):
+        #     # save intermediate models at key points
+        #     torch.save(model.state_dict(), transformer_path[:-3] + f'_nvis{num_visible}.pt')
     print(f'validation: accuracy={val_accuracy}, loss={val_loss}')
     print('results_path: ', results_path)
     if results_path is not None:
@@ -563,8 +563,8 @@ def train_with_curriculum(
                     if exponent == -1:
                         percent_visible = 0.0
                     else:
-                        # percent_visible = min(1.0, (step+1)/total_steps)**exponent  # 5th power goes around half way near zero
-                        percent_visible = min(1.0, np.exp( (-1/2)*np.power( (step-(total_steps/2))/(total_steps/15) , 2) ))
+                        percent_visible = min(1.0, (step+1)/total_steps)**exponent  # 5th power goes around half way near zero
+                        # percent_visible = min(1.0, np.exp( (-1/2)*np.power( (step-(total_steps/2))/(total_steps/15) , 2) ))
                     L = harmony_gt.shape[1]
                     num_visible = min( int(L * percent_visible), L-1 )  # ensure at least one token is predicted
                     harmony_input, harmony_target = full_to_partial_masking(

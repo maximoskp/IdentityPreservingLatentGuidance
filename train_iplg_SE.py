@@ -94,13 +94,15 @@ def main():
     optimizer = AdamW(transformer_model.film_parameters(), lr=lr)
 
     # save results
-    results_path = os.path.join( 'results', 'iplg', f'iplg_{loss_scheme}_loss.csv' )
+    results_path = os.path.join( 'results', 'iplg', 'SE', f'iplg_{loss_scheme}_loss.csv' )
     os.makedirs('results', exist_ok=True)
     os.makedirs('results/iplg', exist_ok=True)
+    os.makedirs('results/iplg/SE', exist_ok=True)
 
     os.makedirs('saved_models/', exist_ok=True)
     os.makedirs('saved_models/iplg/', exist_ok=True)
-    save_dir = 'saved_models/iplg/'
+    os.makedirs('saved_models/iplg/SE', exist_ok=True)
+    save_dir = 'saved_models/iplg/SE/'
     transformer_path = save_dir + f'iplg_{loss_scheme}_loss.pt'
 
     train_IPLG(

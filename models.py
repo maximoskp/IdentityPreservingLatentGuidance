@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import TransformerEncoderLayer, Sequential, Linear, ReLU
+from torch.nn import TransformerEncoderLayer, TransformerDecoderLayer, Sequential, Linear, ReLU
 import math
 from copy import deepcopy
 
@@ -440,21 +440,18 @@ class EDFiLMModel(nn.Module):
         self.film_layers = nn.ModuleList()
         self.tgt_mask = self.generate_square_subsequent_mask(self.grid_length).to(device)
 
+        # Transformer Encoder
+        encoder_layer = TransformerEncoderLayerWithAttn(d_model=d_model, 
+                                                   nhead=nhead, 
+                                                   dim_feedforward=dim_feedforward,
+                                                   dropout=dropout,
+                                                   activation='gelu',
+                                                   batch_first=True)
+        self.encoder = nn.TransformerEncoder(
+                        encoder_layer,
+                        num_layers=num_layers)
+
         for _ in range(num_layers):
-            base_layer = TransformerEncoderLayer(
-                d_model=d_model,
-                nhead=nhead,
-                dim_feedforward=dim_feedforward,
-                dropout=dropout,
-                activation='gelu',
-                batch_first=True
-            )
-            self.encoder_layers.append(
-                TransformerEncoderLayerWithAttn(
-                    base_layer,
-                    d_model=d_model
-                )
-            )
             base_layer = TransformerDecoderLayer(
                 d_model=d_model,
                 nhead=nhead,
@@ -500,12 +497,8 @@ class EDFiLMModel(nn.Module):
             )
 
         # melody to encoder
-        melody_emb = melody_emb + self.shared_pos
-        melody_emb = self.input_norm(melody_emb)
-        melody_emb = self.dropout(melody_emb)
-        for layer in self.encoder_layers:
-            melody_emb = layer(melody_emb)
-        melody_encoded = self.output_norm(melody_emb)
+        melody_encoded = self.encoder(melody_emb)
+        melody_encoded = self.output_norm(melody_encoded)
 
         # harmony to decoder
         harmony_emb = harmony_emb + self.shared_pos

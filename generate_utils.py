@@ -210,7 +210,7 @@ def load_SEFiLMModel(
         guidance_dim=d_model,
         device=device,
     )
-    checkpoint = torch.load(f'saved_models/iplg/iplg_{loss_scheme}_loss.pt', map_location=device_name)
+    checkpoint = torch.load(f'saved_models/iplg/SE/iplg_{loss_scheme}_loss.pt', map_location=device_name)
     transformer_model.load_state_dict(checkpoint)
     transformer_model.to(device)
     transformer_model.eval()
