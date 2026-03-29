@@ -57,29 +57,18 @@ def add_latent_to_dataset(dataset):
 # end add_latent_to_dataset
 
 def main():
-    parent_main_dirs = '/mnt/ssd2/maximos/data/hooktheory_midi_hr'
-    dataset_subdirs = ['CA_train', 'CA_test']
-    parent_dir_idioms = '/mnt/ssd2/maximos/data/coinvent_midi'
-    other_dirs = os.listdir(parent_dir_idioms)
-    idiom_dirs = [f for f in other_dirs if '.pickle' not in f]
-
-    parent_dir_wiki_nott = '/mnt/ssd2/maximos/data/mel_harm_other_CA'
-    other_dirs = os.listdir(parent_dir_wiki_nott)
-    wiki_nott_dirs = [f for f in other_dirs if '.pickle' not in f]
+    val_dirs = [
+        '/mnt/ssd2/maximos/data/hooktheory_midi_hr/CA_test',
+        '/mnt/ssd2/maximos/data/gjt_melodies/gjt_CA_test',
+        '/mnt/ssd2/maximos/data/mel_harm_other_CA/nottingham_test',
+        '/mnt/ssd2/maximos/data/mel_harm_other_CA/wikifonia_test'
+    ]
 
     full_dirs = []
     names = []
-    for d in dataset_subdirs:
-        full_dirs.append(os.path.join(parent_main_dirs, d))
-        names.append(d)
-    for d in idiom_dirs:
-        full_dirs.append(os.path.join(parent_dir_idioms, d))
-        names.append(d)
-    for d in wiki_nott_dirs:
-        full_dirs.append(os.path.join(parent_dir_wiki_nott, d))
-        names.append(d)
-    full_dirs.append('/mnt/ssd2/maximos/data/gjt_melodies')
-    names.append('gjt_CA')
+    for d in val_dirs:
+        full_dirs.append(d)
+        names.append(d.split('/')[-1])
 
     os.makedirs('data', exist_ok=True)
     os.makedirs('data/latent_datasets', exist_ok=True)

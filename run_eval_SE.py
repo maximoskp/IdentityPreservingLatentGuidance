@@ -14,15 +14,33 @@ from pprint import pprint
 import pandas as pd
 
 device_name = 'cuda:0'
-batch_size = 128
+batch_size = 16
 
-for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
-    val_path = f'data/latent_datasets/SE/{data_file}'
+for data_files in [
+        ('nottingham_test.pickle', 'gjt_CA_test.pickle'),
+        ('gjt_CA_test.pickle', 'nottingham_test.pickle')
+    ]:
+    home_path = f'data/latent_datasets/SE/{data_files[0]}'
+    foreign_path = f'data/latent_datasets/SE/{data_files[1]}'
 
-    with open(val_path, 'rb') as f:
-        val_dataset = pickle.load(f)
-
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=latent_MH_collate_fn)
+    with open(home_path, 'rb') as f:
+        home_dataset = pickle.load(f)
+    home_loader = DataLoader(
+        home_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        drop_last=True,
+        collate_fn=latent_MH_collate_fn
+    )
+    with open(foreign_path, 'rb') as f:
+        foreign_dataset = pickle.load(f)
+    foreign_loader = DataLoader(
+        foreign_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        drop_last=True,
+        collate_fn=latent_MH_collate_fn
+    )
 
     if device_name == 'cpu':
         device = torch.device('cpu')
@@ -72,7 +90,8 @@ for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
 
         eval_latent, eval_logits, eval_unique, eval_conf = evaluate_iplg_convergence(
             transformer_model,
-            val_loader,
+            home_loader,
+            foreign_loader,
             logits_loss_fn,
             latent_loss_fn,
             mask_token_id,
@@ -88,19 +107,21 @@ for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
         results_unique[loss_scheme] = eval_unique
         results_conf[loss_scheme] = eval_conf
 
+    main_results_path = 'results/SE/guidance_eval'
+    os.makedirs(main_results_path, exist_ok=True)
     df = pd.DataFrame(results_latent)
     df = df.T
-    df.to_csv(f'results/SE/eval_latent_{data_file}.csv', float_format='%.6f')
+    df.to_csv(f'{main_results_path}/latent_{data_files[0]}_{data_files[1]}.csv', float_format='%.6f')
     latex_table = df.to_latex(float_format="%.6f")
-    with open(f'results/SE/eval_latent_{data_file}.tex', "w") as f:
+    with open(f'{main_results_path}/latent_{data_files[0]}_{data_files[1]}.tex', "w") as f:
         f.write(latex_table)
     print(df)
 
     df = pd.DataFrame(results_logits)
     df = df.T
-    df.to_csv(f'results/SE/eval_logits_{data_file}.csv', float_format='%.6f')
+    df.to_csv(f'{main_results_path}/logits_{data_files[0]}_{data_files[1]}.csv', float_format='%.6f')
     latex_table = df.to_latex(float_format="%.6f")
-    with open(f'results/SE/eval_logits_{data_file}.tex', "w") as f:
+    with open(f'{main_results_path}/logits_{data_files[0]}_{data_files[1]}.tex', "w") as f:
         f.write(latex_table)
     print(df)
 
@@ -108,9 +129,9 @@ for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
     df = df.T
     df['foreign_strength'] = df['fguide_funique'] / df['fguide_hunique']
     df['home_strength'] = df['hguide_hunique'] / df['hguide_funique']
-    df.to_csv(f'results/SE/eval_unique_{data_file}.csv', float_format='%.6f')
+    df.to_csv(f'{main_results_path}/unique_{data_files[0]}_{data_files[1]}.csv', float_format='%.6f')
     latex_table = df.to_latex(float_format="%.6f")
-    with open(f'results/SE/eval_unique_{data_file}.tex', "w") as f:
+    with open(f'{main_results_path}/unique_{data_files[0]}_{data_files[1]}.tex', "w") as f:
         f.write(latex_table)
     print(df)
 
@@ -118,8 +139,8 @@ for data_file in ['CA_test.pickle', 'gjt_CA.pickle']:
     df = df.T
     # df['foreign_strength'] = df['confident_fguide_funique'] / df['confident_fguide_hunique']
     # df['home_strength'] = df['confident_hguide_hunique'] / df['confident_hguide_funique']
-    df.to_csv(f'results/SE/eval_conf_{data_file}.csv', float_format='%.6f')
+    df.to_csv(f'{main_results_path}/conf_{data_files[0]}_{data_files[1]}.csv', float_format='%.6f')
     latex_table = df.to_latex(float_format="%.6f")
-    with open(f'results/SE/eval_conf_{data_file}.tex', "w") as f:
+    with open(f'{main_results_path}/conf_{data_files[0]}_{data_files[1]}.tex', "w") as f:
         f.write(latex_table)
     print(df)

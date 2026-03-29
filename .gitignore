@@ -3,6 +3,7 @@ data/
 MIDIs/
 examples_musicXML/
 examples_MIDI/
+old/
 
 *.zip
 

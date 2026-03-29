@@ -91,7 +91,8 @@ def compute_unique_logit_activations(harmony_gt, foreign_ids, logits, threshold=
 
 def evaluate_iplg_convergence(
         transformer_model,
-        val_loader,
+        home_loader,
+        foreign_loader,
         logits_loss_fn,
         latent_loss_fn,
         mask_token_id,
@@ -164,15 +165,16 @@ def evaluate_iplg_convergence(
 
         batch_num = 0
         print('validation')
-        with tqdm(val_loader, unit='batch', position=tqdm_position) as tepoch:
+        with tqdm(home_loader, unit='batch', position=tqdm_position) as tepoch:
             tepoch.set_description(f'Epoch {epoch}@{step}| val')
             for batch in tepoch:
                 batch_num += 1
                 melody_grid = batch["pianoroll"].to(device)
                 harmony_gt = batch["harmony_ids"].to(device)
                 home_guidance_embeddings = batch["latent"].to(device)
-                mixed_batch_1 = make_mixed_batch(batch, "latent")
-                mixed_batch_2 = make_mixed_batch(mixed_batch_1, "latent")
+                foreign_batch = next(iter(foreign_loader))
+                mixed_batch_1 = make_mixed_batch(foreign_batch, "latent")
+                mixed_batch_2 = make_mixed_batch(foreign_batch, "latent")
                 if interpolate:
                     foreign_guidance_embeddings_1 = mixed_batch_1["latent"].to(device)
                     foreign_guidance_embeddings_2 = mixed_batch_2["latent"].to(device)

@@ -21,26 +21,26 @@ tokenizer = CSGridMLMTokenizer(
 )
 
 d_model = 512
-model_SE = EDFiLMModel(
+model_ED = EDFiLMModel(
     chord_vocab_size=len(tokenizer.vocab),
     d_model=d_model,
-    nhead=8,
-    num_layers=8,
+    nhead=4,
+    num_layers=4,
     grid_length=80,
     pianoroll_dim=tokenizer.pianoroll_dim,
     guidance_dim=d_model,
     device=device,
 )
 checkpoint = torch.load('saved_models/ED/pretrained.pt', map_location=device_name)
-model_SE.load_state_dict(checkpoint)
-model_SE.eval()
+model_ED.load_state_dict(checkpoint)
+model_ED.eval()
 
 def get_ED_embeddings_for_sequence(pianoroll, harmony_ids):
     melody_grid = torch.FloatTensor( pianoroll ).reshape( 1, pianoroll.shape[0], pianoroll.shape[1] )
     harmony_real = torch.LongTensor(harmony_ids).reshape(1, len(harmony_ids))
     _, hidden = model_ED(
-        melody_grid=melody_grid.to(model_SE.device),
-        harmony_tokens=harmony_real.to(model_SE.device),
+        melody_grid=melody_grid.to(model_ED.device),
+        harmony_tokens=harmony_real.to(model_ED.device),
         guidance_embedding=None,
         return_hidden=True
     )
@@ -57,29 +57,18 @@ def add_latent_to_dataset(dataset):
 # end add_latent_to_dataset
 
 def main():
-    parent_main_dirs = '/mnt/ssd2/maximos/data/hooktheory_midi_hr'
-    dataset_subdirs = ['CA_train', 'CA_test']
-    parent_dir_idioms = '/mnt/ssd2/maximos/data/coinvent_midi'
-    other_dirs = os.listdir(parent_dir_idioms)
-    idiom_dirs = [f for f in other_dirs if '.pickle' not in f]
-
-    parent_dir_wiki_nott = '/mnt/ssd2/maximos/data/mel_harm_other_CA'
-    other_dirs = os.listdir(parent_dir_wiki_nott)
-    wiki_nott_dirs = [f for f in other_dirs if '.pickle' not in f]
+    val_dirs = [
+        '/mnt/ssd2/maximos/data/hooktheory_midi_hr/CA_test',
+        '/mnt/ssd2/maximos/data/gjt_melodies/gjt_CA_test',
+        '/mnt/ssd2/maximos/data/mel_harm_other_CA/nottingham_test',
+        '/mnt/ssd2/maximos/data/mel_harm_other_CA/wikifonia_test'
+    ]
 
     full_dirs = []
     names = []
-    for d in dataset_subdirs:
-        full_dirs.append(os.path.join(parent_main_dirs, d))
-        names.append(d)
-    for d in idiom_dirs:
-        full_dirs.append(os.path.join(parent_dir_idioms, d))
-        names.append(d)
-    for d in wiki_nott_dirs:
-        full_dirs.append(os.path.join(parent_dir_wiki_nott, d))
-        names.append(d)
-    full_dirs.append('/mnt/ssd2/maximos/data/gjt_melodies')
-    names.append('gjt_CA')
+    for d in val_dirs:
+        full_dirs.append(d)
+        names.append(d.split('/')[-1])
 
     os.makedirs('data', exist_ok=True)
     os.makedirs('data/latent_datasets', exist_ok=True)
