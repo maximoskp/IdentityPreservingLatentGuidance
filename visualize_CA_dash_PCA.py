@@ -9,6 +9,7 @@ import numpy as np
 # from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA, KernelPCA
 import plotly.express as px
+import re
 import pandas as pd
 import dash
 from dash import dcc, html, Input, Output, State
@@ -23,8 +24,8 @@ data_all = None
 pca = None
 
 device_name = 'cuda:0'
-val_dir = '/mnt/ssd2/maximos/data/hooktheory_midi_hr/CA_test'
-jazz_dir = '/mnt/ssd2/maximos/data/gjt_melodies/gjt_CA'
+val_dir = '/mnt/ssd2/maximos/data/mel_harm_other_CA/nottingham_test'
+jazz_dir = '/mnt/ssd2/maximos/data/gjt_melodies/gjt_CA_test'
 
 tokenizer = CSGridMLMTokenizer(
     fixed_length=80,
@@ -59,6 +60,7 @@ for f in tqdm(val_files):
     tmp_struct['harmony_ids'] = encoded['harmony_ids']
     latent = get_SE_embeddings_for_sequence(model, encoded['pianoroll'], encoded['harmony_ids']).detach().cpu().numpy()
     tmp_struct['latent'] = latent
+    tmp_struct['name'] = f.split('.')[0]
     val_data.append(tmp_struct)
 print('making jazz data struct')
 for f in tqdm(jazz_files):
@@ -70,6 +72,7 @@ for f in tqdm(jazz_files):
     tmp_struct['harmony_ids'] = encoded['harmony_ids']
     latent = get_SE_embeddings_for_sequence(model, encoded['pianoroll'], encoded['harmony_ids']).detach().cpu().numpy()
     tmp_struct['latent'] = latent
+    tmp_struct['name'] = f.split('.')[0]
     jazz_data.append(tmp_struct)
 
 mxl_folder_out = 'examples_musicXML/' + loss_scheme + '/'
@@ -124,6 +127,101 @@ def condenced_str_from_token_ids(inp_ids, tokenizer):
     return tmp_str
 # end condenced_str_from_token_ids
 
+
+def extract_chord_labels(text):
+    labels = []
+    for chunk in re.split(r'[_\n]+', text):
+        if not chunk:
+            continue
+        parts = chunk.split('x', 1)
+        labels.append(parts[-1])
+    return labels
+
+
+def make_colored_chord_line(line, style_fn):
+    children = []
+    tokens = line.split('_')
+    for i, chunk in enumerate(tokens):
+        if i > 0:
+            children.append(html.Span('_', style={'margin': '0 4px'}))
+        if not chunk:
+            continue
+        label = chunk.split('x', 1)[-1]
+        color = style_fn(label)
+        children.append(html.Span(
+            chunk,
+            style={
+                'backgroundColor': color,
+                'padding': '2px 6px',
+                'borderRadius': '4px',
+                'marginRight': '4px',
+                'display': 'inline-block',
+                'whiteSpace': 'nowrap'
+            }
+        ))
+    return children
+
+
+def render_colored_token_block(token_lines, style_fn):
+    if not token_lines:
+        return html.Div()
+    children = [html.Div(token_lines[0], style={'fontWeight': 'bold', 'marginBottom': '4px'})]
+    for line in token_lines[1:]:
+        children.append(html.Div(
+            make_colored_chord_line(line, style_fn),
+            style={'display': 'inline-flex', 'flexWrap': 'wrap', 'alignItems': 'center', 'marginBottom': '4px'}
+        ))
+    return html.Div(children)
+
+
+def render_colored_chord_lines(token_lines, style_fn):
+    children = []
+    for line in token_lines:
+        if not line.strip():
+            continue
+        children.append(html.Div(
+            make_colored_chord_line(line, style_fn),
+            style={'display': 'inline-flex', 'flexWrap': 'wrap', 'alignItems': 'center', 'marginBottom': '4px'}
+        ))
+    return html.Div(children)
+
+
+def render_harmonized_block(token_lines, melody_labels, guide_labels):
+    common_labels = melody_labels & guide_labels
+    melody_only = melody_labels - guide_labels
+    guide_only = guide_labels - melody_labels
+
+    def style_fn(label):
+        if label in common_labels:
+            return '#d3d3d3'
+        if label in melody_only:
+            return '#b8e994'
+        if label in guide_only:
+            return '#ffb3b3'
+        return '#fff3b0'
+
+    return render_colored_chord_lines(token_lines, style_fn)
+
+
+def render_melody_guide_blocks(melody_tokens, guide_tokens):
+    melody_labels = set(extract_chord_labels('\n'.join(melody_tokens[1:])))
+    guide_labels = set(extract_chord_labels('\n'.join(guide_tokens[1:])))
+    common_labels = melody_labels & guide_labels
+
+    def melody_style(label):
+        return '#d3d3d3' if label in common_labels else '#b8e994'
+
+    def guide_style(label):
+        return '#d3d3d3' if label in common_labels else '#ffb3b3'
+
+    return (
+        render_colored_token_block(melody_tokens, melody_style),
+        render_colored_token_block(guide_tokens, guide_style),
+        melody_labels,
+        guide_labels
+    )
+
+
 def apply_pca(model, tokenizer, val_dataset, jazz_dataset):
     global pca
     print('FUN apply_pca')
@@ -138,13 +236,13 @@ def apply_pca(model, tokenizer, val_dataset, jazz_dataset):
         feats.append(d['latent'])
         tmp_str = condenced_str_from_token_ids(d['harmony_ids'], tokenizer)
         z_idxs.append(0)
-        z_tokens.append(tmp_str)
+        z_tokens.append(d['name'] + '\n' + tmp_str)
     for d in tqdm(jazz_dataset):
         data_all.append(d)
         feats.append(d['latent'])
         z_idxs.append(1)
         tmp_str = condenced_str_from_token_ids(d['harmony_ids'], tokenizer)
-        z_tokens.append(tmp_str)
+        z_tokens.append(d['name'] + '\n' + tmp_str)
 
     # z_np = np.array( zs )
     feats_np = np.array(feats)
@@ -178,6 +276,7 @@ def make_figure(selected):
         y='y',
         color='class_str',
         symbol='symbol',
+        custom_data=['hover_text'],
         # size='size',
         # size_max=10,
         hover_data=None,
@@ -190,7 +289,7 @@ def make_figure(selected):
     )
 
     fig.update_traces(
-        hovertemplate=df['hover_text']
+        hovertemplate='%{customdata[0]}<extra></extra>'
     )
     print(selected)
     if selected:
@@ -200,8 +299,8 @@ def make_figure(selected):
                 x=[row['x']],
                 y=[row['y']],
                 mode='markers',
-                marker=dict(
-                    color='red',
+                marker=dict(    
+                    color='green',
                     size=16,
                     symbol='star',
                     line=dict(color='black', width=2),
@@ -218,7 +317,7 @@ def make_figure(selected):
                 y=[row['y']],
                 mode='markers',
                 marker=dict(
-                    color='green',
+                    color='red',
                     size=16,
                     symbol='star',
                     line=dict(color='black', width=2),
@@ -286,13 +385,14 @@ def handle_click(clickData, selected):
 
     token1 = df.iloc[selected['melody']]['token'].split('\n') if selected['melody'] is not None else ["None"]
     token2 = df.iloc[selected['guide']]['token'].split('\n') if selected['guide'] is not None else ["None"]
+    melody_block, guide_block, _, _ = render_melody_guide_blocks(token1, token2)
 
     text = html.Div([
         html.Strong("Melody:"),
-        *[html.Div(line) for line in token1],
+        melody_block,
         html.Br(),
         html.Strong("Guide:"),
-        *[html.Div(line) for line in token2],
+        guide_block,
     ])
 
     return make_figure(selected), text, selected
@@ -332,10 +432,13 @@ def run_harmonization(n_clicks, selected):
     # text to present to html
     gen_output_html = condenced_str_from_token_ids(g['gen_output_token_ids'][0].tolist(), tokenizer)
     gen_output_html = gen_output_html.split('\n')
+    melody_labels = set(extract_chord_labels(df.iloc[selected['melody']]['token'].split('\n', 1)[1] if '\n' in df.iloc[selected['melody']]['token'] else ''))
+    guide_labels = set(extract_chord_labels(df.iloc[selected['guide']]['token'].split('\n', 1)[1] if '\n' in df.iloc[selected['guide']]['token'] else ''))
     txt = html.Div([
         html.Strong("Harmonized:"),
-        *[html.Div(line) for line in gen_output_html],
+        render_harmonized_block(gen_output_html, melody_labels, guide_labels)
     ])
+    hover_txt = 'Harmonized:<br>' + '<br>'.join(gen_output_html)
     # embedding to apply pca transformation to
     print('guide-z: ', F.cosine_similarity(
         g['hidden'].detach().cpu(),
@@ -354,7 +457,7 @@ def run_harmonization(n_clicks, selected):
         'y': z_pca[1],
         'class': 2,
         'token': gen_output_tokens,
-        'hover_text': txt,
+        'hover_text': hover_txt,
         'class_str': '2',
         'symbol': symbol_map['2'],
         'size': size_map['2']

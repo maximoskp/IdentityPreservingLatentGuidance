@@ -947,7 +947,7 @@ def validation_IPLG_loop(
                 # loss = foreign_guidance_loss + home_guidance_loss + logits_loss
                 loss = ('f' in loss_scheme)*foreign_guidance_loss + \
                     ('h' in loss_scheme)*home_guidance_loss + \
-                    0.02*('l' in loss_scheme)*logits_loss
+                    ('l' in loss_scheme)*logits_loss
 
                 # update loss and accuracy
                 batch_num += 1
@@ -1092,7 +1092,7 @@ def train_IPLG(
                 optimizer.zero_grad()
                 loss = ('f' in loss_scheme)*foreign_guidance_loss + \
                     ('h' in loss_scheme)*home_guidance_loss + \
-                    0.02*('l' in loss_scheme)*logits_loss
+                    ('l' in loss_scheme)*logits_loss
                 loss.backward()
                 optimizer.step()
                 # scheduler.step()
@@ -1113,7 +1113,7 @@ def train_IPLG(
                 train_foreign_loss = running_foreign_loss/batch_num
                 running_home_loss += home_guidance_loss.item()
                 train_home_loss = running_home_loss/batch_num
-                running_logits_loss = logits_loss.item()
+                running_logits_loss += logits_loss.item()
                 train_logits_loss = running_logits_loss/batch_num
 
                 tepoch.set_postfix(

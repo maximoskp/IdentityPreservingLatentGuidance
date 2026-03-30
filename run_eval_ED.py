@@ -76,8 +76,8 @@ for data_files in [
         transformer_model = EDFiLMModel(
             chord_vocab_size=len(tokenizer.vocab),
             d_model=d_model,
-            nhead=8,
-            num_layers=8,
+            nhead=4,
+            num_layers=4,
             grid_length=80,
             pianoroll_dim=tokenizer.pianoroll_dim,
             guidance_dim=d_model,
