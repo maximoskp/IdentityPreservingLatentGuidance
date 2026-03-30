@@ -58,6 +58,10 @@ def add_latent_to_dataset(dataset):
 
 def main():
     val_dirs = [
+        '/mnt/ssd2/maximos/data/hooktheory_midi_hr/CA_train',
+        '/mnt/ssd2/maximos/data/gjt_melodies/gjt_CA_train',
+        '/mnt/ssd2/maximos/data/mel_harm_other_CA/nottingham_train',
+        '/mnt/ssd2/maximos/data/mel_harm_other_CA/wikifonia_train',
         '/mnt/ssd2/maximos/data/hooktheory_midi_hr/CA_test',
         '/mnt/ssd2/maximos/data/gjt_melodies/gjt_CA_test',
         '/mnt/ssd2/maximos/data/mel_harm_other_CA/nottingham_test',

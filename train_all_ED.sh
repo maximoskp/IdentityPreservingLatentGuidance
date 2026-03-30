@@ -7,12 +7,12 @@
 
 # List of Python scripts with their respective arguments
 scripts=(
-    "train_iplg_SE.py -s fhl -g 0 -e 30 -l 1e-4 -b 32"
-    "train_iplg_SE.py -s f -g 0 -e 30 -l 1e-4 -b 32"
-    "train_iplg_SE.py -s fh -g 0 -e 30 -l 1e-4 -b 32"
-    "train_iplg_SE.py -s fl -g 0 -e 30 -l 1e-4 -b 32"
-    "train_iplg_SE.py -s hl -g 0 -e 30 -l 1e-4 -b 32"
-    "train_iplg_SE.py -s l -g 0 -e 30 -l 1e-4 -b 32"
+    "train_iplg_ED.py -s fhl -g 0 -e 30 -l 1e-4 -b 32"
+    "train_iplg_ED.py -s f -g 0 -e 30 -l 1e-4 -b 32"
+    "train_iplg_ED.py -s fh -g 0 -e 30 -l 1e-4 -b 32"
+    "train_iplg_ED.py -s fl -g 0 -e 30 -l 1e-4 -b 32"
+    "train_iplg_ED.py -s hl -g 0 -e 30 -l 1e-4 -b 32"
+    "train_iplg_ED.py -s l -g 0 -e 30 -l 1e-4 -b 32"
 )
 
 # Name of the conda environment

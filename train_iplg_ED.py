@@ -2,7 +2,7 @@ import GridMLM_tokenizers
 from GridMLM_tokenizers import CSGridMLMTokenizer
 from data_utils import CSGridMLMDataset, CSGridMLM_collate_fn
 from torch.utils.data import DataLoader, ConcatDataset
-from models import SEFiLMModel
+from models import EDFiLMModel
 import torch
 from torch.optim import AdamW
 from torch.nn import CrossEntropyLoss
@@ -45,32 +45,32 @@ def main():
         batch_size = args.batchsize
 
     print('loading hook')
-    train_hook = 'data/latent_datasets/SE/CA_train.pickle'
-    val_hook = 'data/latent_datasets/SE/CA_test.pickle'
+    train_hook = 'data/latent_datasets/ED/CA_train.pickle'
+    val_hook = 'data/latent_datasets/ED/CA_test.pickle'
     with open(train_hook, 'rb') as f:
         train_dataset_hook = pickle.load(f)
     with open(val_hook, 'rb') as f:
         val_dataset_hook = pickle.load(f)
     
     print('loading gjt')
-    train_gjt = 'data/latent_datasets/SE/gjt_CA_train.pickle'
-    val_gjt = 'data/latent_datasets/SE/gjt_CA_test.pickle'
+    train_gjt = 'data/latent_datasets/ED/gjt_CA_train.pickle'
+    val_gjt = 'data/latent_datasets/ED/gjt_CA_test.pickle'
     with open(train_gjt, 'rb') as f:
         train_dataset_gjt = pickle.load(f)
     with open(val_gjt, 'rb') as f:
         val_dataset_gjt = pickle.load(f)
     
     print('loading nottingham')
-    train_nottingham = 'data/latent_datasets/SE/nottingham_train.pickle'
-    val_nottingham = 'data/latent_datasets/SE/nottingham_test.pickle'
+    train_nottingham = 'data/latent_datasets/ED/nottingham_train.pickle'
+    val_nottingham = 'data/latent_datasets/ED/nottingham_test.pickle'
     with open(train_nottingham, 'rb') as f:
         train_dataset_nottingham = pickle.load(f)
     with open(val_nottingham, 'rb') as f:
         val_dataset_nottingham = pickle.load(f)
 
     print('loading wikifonia')
-    train_wikifonia = 'data/latent_datasets/SE/wikifonia_train.pickle'
-    val_wikifonia = 'data/latent_datasets/SE/wikifonia_test.pickle'
+    train_wikifonia = 'data/latent_datasets/ED/wikifonia_train.pickle'
+    val_wikifonia = 'data/latent_datasets/ED/wikifonia_test.pickle'
     with open(train_wikifonia, 'rb') as f:
         train_dataset_wikifonia = pickle.load(f)
     with open(val_wikifonia, 'rb') as f:
@@ -115,7 +115,7 @@ def main():
     logits_loss_fn =CrossEntropyLoss(ignore_index=-100)
 
     d_model = 512
-    transformer_model = SEFiLMModel(
+    transformer_model = EDFiLMModel(
         chord_vocab_size=len(tokenizer.vocab),
         d_model=d_model,
         nhead=8,
@@ -125,21 +125,21 @@ def main():
         guidance_dim=d_model,
         device=device,
     )
-    checkpoint = torch.load('saved_models/SE/pretrained.pt', map_location=device_name)
+    checkpoint = torch.load('saved_models/ED/pretrained.pt', map_location=device_name)
     transformer_model.load_state_dict(checkpoint)
     transformer_model.to(device)
     optimizer = AdamW(transformer_model.film_parameters(), lr=lr)
 
     # save results
-    results_path = os.path.join( 'results', 'iplg', 'SE', f'iplg_{loss_scheme}_loss.csv' )
+    results_path = os.path.join( 'results', 'iplg', 'ED', f'iplg_{loss_scheme}_loss.csv' )
     os.makedirs('results', exist_ok=True)
     os.makedirs('results/iplg', exist_ok=True)
-    os.makedirs('results/iplg/SE', exist_ok=True)
+    os.makedirs('results/iplg/ED', exist_ok=True)
 
     os.makedirs('saved_models/', exist_ok=True)
     os.makedirs('saved_models/iplg/', exist_ok=True)
-    os.makedirs('saved_models/iplg/SE', exist_ok=True)
-    save_dir = 'saved_models/iplg/SE/'
+    os.makedirs('saved_models/iplg/ED', exist_ok=True)
+    save_dir = 'saved_models/iplg/ED/'
     transformer_path = save_dir + f'iplg_{loss_scheme}_loss.pt'
 
     train_IPLG(
