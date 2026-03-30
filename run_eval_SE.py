@@ -14,7 +14,7 @@ from pprint import pprint
 import pandas as pd
 
 device_name = 'cuda:0'
-batch_size = 16
+batch_size = 4
 
 for data_files in [
         ('nottingham_test.pickle', 'gjt_CA_test.pickle'),

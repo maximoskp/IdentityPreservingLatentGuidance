@@ -4,7 +4,7 @@ from GridMLM_tokenizers import CSGridMLMTokenizer
 import os
 from tqdm import tqdm
 import torch
-from models import SEFiLMModel
+from models import EDFiLMModel
 
 device_name = 'cuda:0'
 
@@ -26,17 +26,17 @@ else:
         print('Selected device not available: ' + device_name)
 # end device selection
 d_model = 512
-transformer_model = SEFiLMModel(
+transformer_model = EDFiLMModel(
     chord_vocab_size=len(tokenizer.vocab),
     d_model=d_model,
-    nhead=8,
-    num_layers=8,
+    nhead=4,
+    num_layers=4,
     grid_length=80,
     pianoroll_dim=tokenizer.pianoroll_dim,
     guidance_dim=d_model,
     device=device,
 )
-checkpoint = torch.load(f'saved_models/SE/pretrained.pt', map_location=device_name)
+checkpoint = torch.load(f'saved_models/ED/pretrained.pt', map_location=device_name)
 transformer_model.load_state_dict(checkpoint)
 transformer_model.to(device)
 transformer_model.eval()
@@ -60,7 +60,7 @@ for i in [0,1]:
         h_idx = i
         input_f_path = os.path.join(data_path, data_files[h_idx])
         mxl_folder_out = None
-        prefix = 'gen/SE/'
+        prefix = 'gen/ED/'
         midi_folder_out = f'MIDIs/{data_name}/{prefix}{loss_scheme}'
         name_suffix = str(h_idx)
         
@@ -77,7 +77,7 @@ for i in [0,1]:
             normalize_tonality=False,
             temperature=0.5,
             p=0.9,
-            unmasking_order='certain',
+            unmasking_order='start',
             create_gen = True,
             create_real = False,
             create_guide = False
