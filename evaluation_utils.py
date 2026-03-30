@@ -7,7 +7,7 @@ import numpy as np
 import os
 from train_utils import make_mixed_batch, full_to_partial_masking
 
-def compute_unique_logit_activations(harmony_gt, foreign_ids, logits, threshold=0.9):
+def compute_unique_logit_activations(harmony_gt, foreign_ids, logits, threshold=0.5):
     """
     harmony_gt : [B, L] token ids in ground truth
     foreign_ids: [B, L] token ids in guiding harmony
