@@ -2,14 +2,12 @@ from evaluation_utils import evaluate_iplg_convergence
 import GridMLM_tokenizers
 from GridMLM_tokenizers import CSGridMLMTokenizer
 from data_utils import CSGridMLMDataset
-from torch.utils.data import DataLoader
 from models import SEFiLMModel
 import torch
 from torch.nn import CrossEntropyLoss
 import os
 import pickle
 from train_utils import train_IPLG
-from data_utils import latent_MH_collate_fn
 from pprint import pprint
 import pandas as pd
 
@@ -25,22 +23,8 @@ for data_files in [
 
     with open(home_path, 'rb') as f:
         home_dataset = pickle.load(f)
-    home_loader = DataLoader(
-        home_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        drop_last=True,
-        collate_fn=latent_MH_collate_fn
-    )
     with open(foreign_path, 'rb') as f:
         foreign_dataset = pickle.load(f)
-    foreign_loader = DataLoader(
-        foreign_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        drop_last=True,
-        collate_fn=latent_MH_collate_fn
-    )
 
     if device_name == 'cpu':
         device = torch.device('cpu')
@@ -90,8 +74,8 @@ for data_files in [
 
         eval_latent, eval_logits, eval_unique, eval_conf = evaluate_iplg_convergence(
             transformer_model,
-            home_loader,
-            foreign_loader,
+            home_dataset,
+            foreign_dataset,
             logits_loss_fn,
             latent_loss_fn,
             mask_token_id,
