@@ -3,6 +3,8 @@ import GridMLM_tokenizers
 from GridMLM_tokenizers import CSGridMLMTokenizer
 import os
 from tqdm import tqdm
+import pickle
+import torch
 
 device_name = 'cuda:0'
 
@@ -15,21 +17,28 @@ tokenizer = CSGridMLMTokenizer(
     use_full_range_melody=False
 )
 
-midis_path = '/mnt/ssd2/maximos/data/hooktheory_midi_hr/CA_test'
-midi_files = [f for f in os.listdir(midis_path) if f.endswith('.mid') or f.endswith('.midi')]
+midis_path = '/mnt/ssd2/maximos/data/gjt_melodies/gjt_CA_test'
+midi_files = [f for f in os.listdir(midis_path) if f.endswith('.mxl') or f.endswith('.xml')]
+
+foreign_path = 'data/latent_datasets/SE/nottingham_test.pickle'
+with open(foreign_path, 'rb') as f:
+    foreign_dataset = pickle.load(f)
+# compute average foreign latent
+guidance_vec = torch.zeros(512)
+for item in foreign_dataset:
+    guidance_vec += torch.tensor(item['latent'])
+guidance_vec /= len(foreign_dataset)
 
 for loss_scheme in ['real', 'none', 'f', 'fh', 'fhl', 'hl', 'l']:
     print(f'loss scheme: {loss_scheme}')
     for i in tqdm(range(len(midi_files))):
         h_idx = i
-        g_idx = (i+1)%len(midi_files)
         input_f_path = os.path.join(midis_path, midi_files[h_idx])
-        guidance_f_path = os.path.join(midis_path, midi_files[g_idx])
         mxl_folder_out = None
         prefix = 'gen/SE/' if loss_scheme != 'real' else ''
-        midi_folder_out = f'MIDIs/testset/{prefix}{loss_scheme}'
+        midi_folder_out = f'MIDIs/jazz2nott/{prefix}{loss_scheme}'
         name_suffix = (loss_scheme == 'real' or loss_scheme == 'none')*str(h_idx) + \
-            (loss_scheme != 'real' and loss_scheme != 'none')*f'h{h_idx}_g{g_idx}'
+            (loss_scheme != 'real' and loss_scheme != 'none')*f'{h_idx}'
 
         if loss_scheme == 'real' or loss_scheme == 'none':
             model = load_SEFiLMModel(
@@ -51,10 +60,11 @@ for loss_scheme in ['real', 'none', 'f', 'fh', 'fhl', 'hl', 'l']:
             model,
             tokenizer,
             input_f_path,
-            guidance_f_path,
             mxl_folder_out,
             midi_folder_out,
             name_suffix,
+            guidance_f_path=None,
+            guidance_vec=guidance_vec,
             use_constraints=False,
             intertwine_bar_info=True, # no bar default
             normalize_tonality=False,

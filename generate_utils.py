@@ -336,10 +336,11 @@ def generate_files_with_nucleus(
         model,
         tokenizer,
         input_f_path,
-        guidance_f_path,
         mxl_folder_out,
         midi_folder_out,
         name_suffix,
+        guidance_f_path = None,
+        guidance_vec = None,
         use_constraints=False,
         intertwine_bar_info=False, # no bar default
         normalize_tonality=False,

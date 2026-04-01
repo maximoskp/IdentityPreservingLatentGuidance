@@ -1046,8 +1046,8 @@ def compute_and_save_html_results_by_setup(
     print(f"CSV results saved to {output_html.replace('.html', '.csv')}")
 
 if __name__ == "__main__":
-    ground_truth_path = "./MIDIs/testset/real"          # folder with the ground-truth MIDIs
-    root_folder       = "./MIDIs/testset/gen"   # folder containing setups; each setup has instance folders
+    ground_truth_path = "./MIDIs/jazz2nott/real"          # folder with the ground-truth MIDIs
+    root_folder       = "./MIDIs/jazz2nott/gen"   # folder containing setups; each setup has instance folders
 
     compute_and_save_html_results_by_setup(
         root_folder=root_folder,
@@ -1055,11 +1055,11 @@ if __name__ == "__main__":
         chord_track_index=1,
         melody_track_index=0,
         grouping_threshold=0.05,
-        output_html="results/results_SE_test.html"
+        output_html="results/results_SE_jazz2nott.html"
     )
 
-    ground_truth_path = "./MIDIs/jazz/real"          # folder with the ground-truth MIDIs
-    root_folder       = "./MIDIs/jazz/gen"   # folder containing setups; each setup has instance folders
+    ground_truth_path = "./MIDIs/nott2jazz/real"          # folder with the ground-truth MIDIs
+    root_folder       = "./MIDIs/nott2jazz/gen"   # folder containing setups; each setup has instance folders
 
     compute_and_save_html_results_by_setup(
         root_folder=root_folder,
@@ -1067,5 +1067,5 @@ if __name__ == "__main__":
         chord_track_index=1,
         melody_track_index=0,
         grouping_threshold=0.05,
-        output_html="results/results_SE_jazz.html"
+        output_html="results/results_SE_nott2jazz.html"
     )

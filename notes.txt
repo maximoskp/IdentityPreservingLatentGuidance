@@ -1,1 +1,9 @@
 https://github.com/jryban/frechet-music-distance
+
+1. Run pretrain_
+
+2. Run make_XX_latent_dataset.py
+
+3. Run train_all_
+
+4. Run run_eval_
