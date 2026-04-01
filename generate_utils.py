@@ -385,8 +385,6 @@ def generate_files_with_nucleus(
         for t in harmony_guide[0].tolist():
             harmony_guide_tokens.append( tokenizer.ids_to_tokens[t] )
         guidance_vec = get_SE_embeddings_for_sequence(model, guide_encoded['pianoroll'], guide_encoded['harmony_ids']).unsqueeze(0)
-    else:
-        guidance_vec = None
     
     hidden = None
     if create_gen:

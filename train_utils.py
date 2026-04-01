@@ -565,8 +565,8 @@ def train_with_curriculum(
                     if exponent == -1:
                         percent_visible = 0.0
                     else:
-                        percent_visible = min(1.0, (step+1)/total_steps)**exponent  # 5th power goes around half way near zero
-                        # percent_visible = min(1.0, np.exp( (-1/2)*np.power( (step-(total_steps/2))/(total_steps/15) , 2) ))
+                        # percent_visible = min(1.0, (step+1)/total_steps)**exponent  # 5th power goes around half way near zero
+                        percent_visible = min(1.0, np.exp( (-1/2)*np.power( (step-(total_steps/2))/(total_steps/15) , 2) ))
                     L = harmony_gt.shape[1]
                     num_visible = min( int(L * percent_visible), L-1 )  # ensure at least one token is predicted
                     harmony_input, harmony_target = full_to_partial_masking(
@@ -1091,8 +1091,8 @@ def train_IPLG(
 
                 optimizer.zero_grad()
                 loss = ('f' in loss_scheme)*foreign_guidance_loss + \
-                    0.5*('h' in loss_scheme)*home_guidance_loss + \
-                    0.1*('l' in loss_scheme)*logits_loss
+                    0.25*('h' in loss_scheme)*home_guidance_loss + \
+                    0.05*('l' in loss_scheme)*logits_loss
                 loss.backward()
                 optimizer.step()
                 # scheduler.step()

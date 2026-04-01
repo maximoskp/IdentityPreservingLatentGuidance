@@ -28,12 +28,13 @@ guidance_vec = torch.zeros(512)
 for item in foreign_dataset:
     guidance_vec += torch.tensor(item['latent'])
 guidance_vec /= len(foreign_dataset)
+guidance_vec = guidance_vec.unsqueeze(dim=0)
 
 for loss_scheme in ['real', 'none', 'f', 'fh', 'fhl', 'hl', 'l']:
     print(f'loss scheme: {loss_scheme}')
     for i in tqdm(range(len(midi_files))):
-        item = foreign_dataset[i % len(foreign_dataset)]
-        guidance_vec += torch.tensor(item['latent'])
+        # item = foreign_dataset[i % len(foreign_dataset)]
+        # guidance_vec = torch.tensor(item['latent'])
         h_idx = i
         input_f_path = os.path.join(midis_path, midi_files[h_idx])
         mxl_folder_out = None

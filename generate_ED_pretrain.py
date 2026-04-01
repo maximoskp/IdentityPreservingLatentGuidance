@@ -68,10 +68,11 @@ for i in [0,1]:
             transformer_model,
             tokenizer,
             input_f_path,
-            None,
             mxl_folder_out,
             midi_folder_out,
             name_suffix,
+            guidance_f_path = None,
+            guidance_vec = None,
             use_constraints=False,
             intertwine_bar_info=True, # no bar default
             normalize_tonality=False,

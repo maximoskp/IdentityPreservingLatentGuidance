@@ -11,7 +11,7 @@ from data_utils import latent_MH_collate_fn
 
 batch_size = 4
 
-def compute_unique_logit_activations(harmony_gt, foreign_ids, logits, threshold=0.95):
+def compute_unique_logit_activations(harmony_gt, foreign_ids, logits, threshold=0.9):
     """
     harmony_gt : [B, L] token ids in ground truth
     foreign_ids: [B, L] token ids in guiding harmony
