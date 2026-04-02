@@ -483,9 +483,9 @@ def validation_curriculum_loop(curriculum_type, model, valloader, mask_token_id,
             saving_version += 1
             best_val_loss = val_loss
             torch.save(model.state_dict(), transformer_path)
-        # if (curriculum_type == 'f2f') and (num_visible in [0, 5, 15, 30, 31, 50, 51]):
-        #     # save intermediate models at key points
-        #     torch.save(model.state_dict(), transformer_path[:-3] + f'_nvis{num_visible}.pt')
+        if  epoch in [168, 177, 182, 189, 196, 200, 203]:
+            print(f'saving copy of epoch {epoch} with num_visible {num_visible}')
+            torch.save(model.state_dict(), transformer_path.replace('.pt', f'_epoch{epoch}_nvis{num_visible}.pt'))
     print(f'validation: accuracy={val_accuracy}, loss={val_loss}')
     print('results_path: ', results_path)
     if results_path is not None:
@@ -983,9 +983,6 @@ def validation_IPLG_loop(
             saving_version += 1
             best_val_loss = val_loss
             torch.save(transformer_model.state_dict(), transformer_path)
-        if  epoch in [177, 182, 189, 196, 200, 203]:
-            print(f'saving copy of epoch {epoch} with num_visible {num_visible}')
-            torch.save(transformer_model.state_dict(), transformer_path.replace('.pt', f'_epoch{epoch}_nvis{num_visible}.pt'))
     print(f'validation: accuracy={val_accuracy}, loss={val_loss}, floss={val_foreign_loss}, hloss={val_home_loss}')
     print('results_path: ', results_path)
     if results_path is not None:
