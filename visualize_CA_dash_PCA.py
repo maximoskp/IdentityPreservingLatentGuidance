@@ -414,10 +414,11 @@ def run_harmonization(n_clicks, selected):
         model,
         tokenizer,
         input_data['path'],
-        guide_data['path'],
         None,
         midi_folder_out,
         name_suffix='test',
+        guidance_f_path=guide_data['path'],
+        guidance_vec=None,
         use_constraints=False,
         intertwine_bar_info=True, # no bar default
         normalize_tonality=False,
