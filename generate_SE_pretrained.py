@@ -64,7 +64,7 @@ for name in model_names:
             input_f_path = os.path.join(data_path, data_files[h_idx])
             mxl_folder_out = None
             prefix = f'gen/SE/{name.split(".")[0]}/'
-            midi_folder_out = f'MIDIs/{data_name}/{prefix}{loss_scheme}'
+            midi_folder_out = f'MIDIs/{data_name}/{prefix}'
             name_suffix = str(h_idx)
             
             g = generate_files_with_nucleus(
