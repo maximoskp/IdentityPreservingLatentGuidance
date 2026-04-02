@@ -12,7 +12,7 @@ from train_utils import train_with_curriculum
 batchsize = 8
 device_name = 'cuda:0'
 lr = 5e-5
-epochs = 30
+epochs = 300
 
 train_hook = '/mnt/ssd2/maximos/data/hooktheory_midi_hr/CA_train'
 val_hook = '/mnt/ssd2/maximos/data/hooktheory_midi_hr/CA_test'

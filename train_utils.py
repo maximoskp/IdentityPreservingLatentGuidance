@@ -983,6 +983,9 @@ def validation_IPLG_loop(
             saving_version += 1
             best_val_loss = val_loss
             torch.save(transformer_model.state_dict(), transformer_path)
+        if  epoch in [177, 182, 189, 196, 200, 203]:
+            print(f'saving copy of epoch {epoch} with num_visible {num_visible}')
+            torch.save(transformer_model.state_dict(), transformer_path.replace('.pt', f'_epoch{epoch}_nvis{num_visible}.pt'))
     print(f'validation: accuracy={val_accuracy}, loss={val_loss}, floss={val_foreign_loss}, hloss={val_home_loss}')
     print('results_path: ', results_path)
     if results_path is not None:
