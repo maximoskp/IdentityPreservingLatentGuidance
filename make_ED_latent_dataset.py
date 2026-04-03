@@ -31,7 +31,7 @@ model_ED = EDFiLMModel(
     guidance_dim=d_model,
     device=device,
 )
-checkpoint = torch.load('saved_models/ED/pretrained.pt', map_location=device_name)
+checkpoint = torch.load('saved_models/ED/pretrained_epoch196_nvis5.pt', map_location=device_name)
 model_ED.load_state_dict(checkpoint)
 model_ED.eval()
 

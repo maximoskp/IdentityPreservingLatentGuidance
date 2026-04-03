@@ -31,7 +31,7 @@ model_SE = SEFiLMModel(
     guidance_dim=d_model,
     device=device,
 )
-checkpoint = torch.load('saved_models/SE/pretrained.pt', map_location=device_name)
+checkpoint = torch.load('saved_models/SE/pretrained_epoch203_nvis2.pt', map_location=device_name)
 model_SE.load_state_dict(checkpoint)
 model_SE.eval()
 
