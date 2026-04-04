@@ -820,42 +820,33 @@ def _pair_real_and_gen(ground_truth_folder, gen_folder):
         print(f"  [warn] {len(missing_in_real)} generated files have no real match in '{ground_truth_folder}': {missing_in_real[:5]}{' ...' if len(missing_in_real) > 5 else ''}")
     return pairs
 
-def has_non_positive(metrics_dict):
-    """
-    Check if any metric value in the dictionary is zero or negative.
-    Returns True if at least one metric is zero or negative, False otherwise.
-    """
-    return any(value <= 0 for value in metrics_dict.values())
-
 # ---------- REPLACEMENT FOR compute_metrics_for_pairs ----------
-def compute_metrics_for_pairs_separated(
-        ground_truth_folder,
-        gen_folder,
-        chord_track_index=1,
-        melody_track_index=0,
-        grouping_threshold=0.05
-    ):
+def compute_metrics_for_pairs_separated(ground_truth_folder, gen_folder, chord_track_index=1, melody_track_index=0, grouping_threshold=0.05):
     """
     Compute aggregated metrics for *paired* real-vs-generated files, where
     real files live in 'ground_truth_folder' and generated files live in 'gen_folder'.
-    Returns a dict with 'real' and 'gen' aggregated stats (mean/std/count) per metric.
+
+    Returns:
+        dict with:
+          - 'real': aggregated stats (mean/std/count) over matched real files
+          - 'gen' : aggregated stats (mean/std/count) over matched generated files
+          - '__pairs': list of per-pair dicts:
+                [{'id': <pair_id>, 'real': {metric->value}, 'gen': {metric->value}}, ...]
     """
     pairs = _pair_real_and_gen(ground_truth_folder, gen_folder)
     metrics_by_group = {"real": [], "gen": []}
+    pair_records = []
 
     for fid, (real_file, gen_file) in tqdm(pairs.items()):
         try:
             m_real = compute_all_metrics(real_file, chord_track_index, melody_track_index, grouping_threshold)
             m_gen  = compute_all_metrics(gen_file,  chord_track_index, melody_track_index, grouping_threshold)
-            if has_non_positive(m_real):
-                print(f"  [warn] Real file '{real_file}' has zero or negative values in metrics: {m_real}")
-            if has_non_positive(m_gen):
-                print(f"  [warn] Generated file '{gen_file}' has zero or negative values in metrics: {m_gen}")
         except Exception as e:
             print(f"Error processing ID {fid}: {e}")
             continue
         metrics_by_group["real"].append(m_real)
         metrics_by_group["gen"].append(m_gen)
+        pair_records.append({"id": fid, "real": m_real, "gen": m_gen})
 
     results = {}
     for group in ["gen", "real"]:
@@ -865,22 +856,54 @@ def compute_metrics_for_pairs_separated(
             for metric in metric_names:
                 values = [m[metric] for m in metrics_by_group[group]]
                 group_results[metric] = {
-                    "mean": np.mean(values),
-                    "std":  np.std(values),
+                    "mean": float(np.mean(values)),
+                    "std":  float(np.std(values)),
                     "count": len(values)
                 }
             results[group] = group_results
         else:
             results[group] = {}
+    results["__pairs"] = pair_records
+
     # Optional: print summary to console
     for group in ["gen", "real"]:
-        print(f"{group.upper()} files [{os.path.basename(gen_folder) if group=='gen' else 'GROUND TRUTH'}]:")
+        label = os.path.basename(gen_folder) if group == "gen" else "GROUND TRUTH"
+        print(f"{group.upper()} files [{label}]:")
         if results[group]:
             for metric, stats in results[group].items():
                 print(f"  {metric}: Mean = {stats['mean']:.3f}, Std = {stats['std']:.3f} (n = {stats['count']})")
         else:
             print("  No files found.")
     return results
+
+
+def mae_row_from_pairs(instance_name, pair_records):
+    """
+    Build a row: {"Instance": instance_name, <metric>: mean(|gen - real|)} using
+    per-pair metrics already computed. No recomputation of metrics.
+    """
+    row = {"Instance": instance_name}
+    if not pair_records:
+        return row
+    metric_names = list(pair_records[0]["real"].keys())
+    for metric in metric_names:
+        diffs = []
+        for rec in pair_records:
+            vr = rec["real"].get(metric, np.nan)
+            vg = rec["gen"].get(metric,  np.nan)
+            if np.isfinite(vr) and np.isfinite(vg):
+                diffs.append(abs(vg - vr))
+        row[metric] = float(np.mean(diffs)) if diffs else np.nan
+    return row
+
+
+def highlight_lowest(series):
+    metric_columns = ["CHE", "CC", "CTD", "CTnCTR", "PCS", "MCTD", "HRHE_i", "HRC_i", "HRHE_o", "HRC_o", "CBS"]
+    if series.name not in metric_columns or series.dropna().empty:
+        return ['' for _ in series]
+    min_val = series.min(skipna=True)
+    return ['background-color: lightgreen' if (not pd.isna(v) and v == min_val) else '' for v in series]
+
 
 
 def highlight_closest(series):
@@ -892,15 +915,15 @@ def highlight_closest(series):
     metric_columns = ["CHE", "CC", "CTD", "CTnCTR", "PCS", "MCTD", "HRHE_i", "HRC_i", "HRHE_o", "HRC_o", "CBS"]
     if series.name not in metric_columns:
         return ['' for _ in series]
-    ground_truth = series.iloc[1]
-    # Compute differences for generated rows only (rows with index >= 2)
-    diffs = series.iloc[2:].apply(lambda x: abs(x - ground_truth))
+    ground_truth = series.iloc[0]
+    # Compute differences for generated rows only (rows with index >= 1)
+    diffs = series.iloc[1:].apply(lambda x: abs(x - ground_truth))
     if diffs.empty:
         return ['' for _ in series]
     min_diff = diffs.min()
     styles = []
     for i, val in enumerate(series):
-        if i == 0 or i == 1:
+        if i == 0:
             styles.append('')  # Do not highlight the ground truth row
         else:
             if abs(val - ground_truth) == min_diff:
@@ -919,23 +942,16 @@ def compute_setup_results(
         grouping_threshold=0.05
     ):
     """
-    Given a 'setup' folder (contains multiple 'instances', one folder per instance),
-    compute aggregated metrics per instance by pairing with a *shared* ground_truth_folder.
-    Returns rows for a table:
-      - First row: Ground Truth
-      - Next rows: one per instance (folder name)
+    Return:
+      - rows_means: first row Ground Truth mean (all real files), then instance means
+      - rows_mae:   one row per instance with mean absolute error vs matched ground truth
     """
-    rows = []
-    # Compute Ground Truth once (based on real files only).
-    # We fake a "gen folder" equal to ground_truth_folder to reuse aggregation;
-    # but to avoid confusion, compute GT directly by aggregating real files alone.
-    # (We’ll scan real folder and run compute_all_metrics on each .mid.)
+    rows_means, rows_mae = [], []
     # SOURCE
     source_map = _index_midis(source_folder)
     if not source_map:
-        print(f"No real MIDI files found in '{source_folder}'.")
-        return rows
-
+        print(f"No source MIDI files found in '{source_folder}'.")
+        return rows_means, rows_mae
     # Aggregate ground truth metrics
     source_metrics = []
     for _, source_fp in tqdm(sorted(source_map.items())):
@@ -943,22 +959,21 @@ def compute_setup_results(
             m_source = compute_all_metrics(source_fp, chord_track_index, melody_track_index, grouping_threshold)
             source_metrics.append(m_source)
         except Exception as e:
-            print(f"  [Source warn] Failed on {source_fp}: {e}")
+            print(f"  [GT warn] Failed on {source_fp}: {e}")
     if source_metrics:
-        gt_row = {"Instance": "Source"}
+        gt_row = {"Instance": "Ground Truth"}
         for metric in source_metrics[0].keys():
             vals = [m[metric] for m in source_metrics]
-            gt_row[f"{metric}"] = float(np.mean(vals)) if vals else np.nan
-        rows.append(gt_row)
+            gt_row[metric] = float(np.mean(vals)) if vals else np.nan
+        rows_means.append(gt_row)
     else:
-        print("No valid source metrics computed.")
-        return rows
+        print("No valid ground-truth metrics computed.")
     
     # TARGET
     target_map = _index_midis(target_folder)
     if not target_map:
         print(f"No real MIDI files found in '{target_folder}'.")
-        return rows
+        return rows_means, rows_mae
 
     # Aggregate ground truth metrics
     target_metrics = []
@@ -973,20 +988,20 @@ def compute_setup_results(
         for metric in target_metrics[0].keys():
             vals = [m[metric] for m in target_metrics]
             gt_row[f"{metric}"] = float(np.mean(vals)) if vals else np.nan
-        rows.append(gt_row)
+        rows_means.append(gt_row)
     else:
         print("No valid target metrics computed.")
-        return rows
 
-    # Iterate instance folders under this setup
+    # Instances
     for instance_folder in sorted(os.listdir(setup_path)):
         instance_path = os.path.join(setup_path, instance_folder)
         if not os.path.isdir(instance_path):
             continue
         print(f"  Processing instance: {instance_folder}")
+
         try:
             results = compute_metrics_for_pairs_separated(
-                ground_truth_folder=target_folder,  # use target as GT for instance evaluation
+                ground_truth_folder=target_folder,
                 gen_folder=instance_path,
                 chord_track_index=chord_track_index,
                 melody_track_index=melody_track_index,
@@ -996,14 +1011,21 @@ def compute_setup_results(
             print(f"    Error in instance '{instance_folder}': {e}")
             continue
 
+        # Mean row (as before)
         if "gen" in results and results["gen"]:
             gen_row = {"Instance": instance_folder}
             for metric, stats in results["gen"].items():
-                gen_row[f"{metric}"] = stats.get("mean", np.nan)
-            rows.append(gen_row)
+                gen_row[metric] = stats.get("mean", np.nan)
+            rows_means.append(gen_row)
         else:
             print(f"    No generated metrics for instance '{instance_folder}'.")
-    return rows
+
+        # MAE row from cached per-pair metrics (no recomputation)
+        pair_records = results.get("__pairs", [])
+        rows_mae.append(mae_row_from_pairs(instance_folder, pair_records))
+
+    return rows_means, rows_mae
+
 
 # ---------- REPLACEMENT FOR compute_and_save_html_results_by_model ----------
 def compute_and_save_html_results_by_setup(
@@ -1015,16 +1037,11 @@ def compute_and_save_html_results_by_setup(
     grouping_threshold=0.05,
     output_html="results_by_setup.html"
 ):
-    """
-    Iterate over each SETUP folder inside root_folder. For each setup,
-    compute one table:
-      - Row 0: Ground Truth (from ground_truth_folder)
-      - Rows 1..N: Each INSTANCE under the setup (folder) paired with the same ground truth.
-    """
-    html_tables = []
+    html_blocks = []
 
     metric_cols = ["CHE", "CC", "CTD", "CTnCTR", "PCS", "MCTD", "HRHE_i", "HRC_i", "HRHE_o", "HRC_o", "CBS"]
-    df_full = pd.DataFrame(columns=["Instance"] + metric_cols)
+    df_means_full = pd.DataFrame(columns=["Instance"] + metric_cols)
+    df_mae_full = pd.DataFrame(columns=["Instance"] + metric_cols)
 
     for setup_name in sorted(os.listdir(root_folder)):
         setup_path = os.path.join(root_folder, setup_name)
@@ -1032,7 +1049,7 @@ def compute_and_save_html_results_by_setup(
             continue
 
         print(f"Processing setup: {setup_name}")
-        rows = compute_setup_results(
+        rows_means, rows_mae = compute_setup_results(
             setup_path=setup_path,
             source_folder=source_folder,
             target_folder=target_folder,
@@ -1040,19 +1057,38 @@ def compute_and_save_html_results_by_setup(
             melody_track_index=melody_track_index,
             grouping_threshold=grouping_threshold
         )
-        if not rows:
+        if not rows_means and not rows_mae:
             print(f"  No valid data for setup {setup_name}")
             continue
 
-        df = pd.DataFrame(rows)
-        df_full = pd.concat([df_full, df], ignore_index=True)
+        df_means = pd.DataFrame(rows_means)
+        df_means_full = pd.concat([df_means_full, df_means], ignore_index=True)
+        df_mae = pd.DataFrame(rows_mae)
+        df_mae_full = pd.concat([df_mae_full, df_mae], ignore_index=True)
 
-        # Only highlight on those columns that actually exist (guards against empties)
-        present_cols = [c for c in metric_cols if c in df.columns]
+        # Table 1: Means (Ground Truth on first row; highlight closest-to-GT)
+        means_html = ""
+        if rows_means:
+            df_means = pd.DataFrame(rows_means)
+            present_cols_means = [c for c in metric_cols if c in df_means.columns]
+            styled_means = df_means.style.apply(highlight_closest, subset=present_cols_means)
+            styled_means = styled_means.set_caption(
+                f"<h3>Setup: {setup_name} — Mean Absolute Error</h3>"
+            )
+            means_html = styled_means.to_html()
 
-        styled_df = df.style.apply(highlight_closest, subset=present_cols)
-        styled_df = styled_df.set_caption(f"<h2>Setup: {setup_name}</h2>")
-        html_tables.append(styled_df.to_html())
+        # Table 2: MAE (instances only; highlight lowest)
+        mae_html = ""
+        if rows_mae:
+            df_mae = pd.DataFrame(rows_mae)
+            present_cols_mae = [c for c in metric_cols if c in df_mae.columns]
+            styled_mae = df_mae.style.apply(highlight_lowest, subset=present_cols_mae)
+            styled_mae = styled_mae.set_caption(
+                f"<h3>Setup: {setup_name} — Mean Absolute Error</h3>"
+            )
+            mae_html = styled_mae.to_html()
+
+        html_blocks.append(means_html + mae_html)
 
     legend_html = """
     <div style="margin-bottom: 30px;">
@@ -1064,12 +1100,13 @@ def compute_and_save_html_results_by_setup(
          <li><strong>CTnCTR</strong>: Chord Tone to Non-Chord Tone Ratio</li>
          <li><strong>PCS</strong>: Pitch Consonance Score</li>
          <li><strong>MCTD</strong>: Melody-chord Tonal Distance</li>
-         <li><strong>HRHE_i</strong>: Harmonic Rhythm Histogram Entropy (inter-chords intervals)</li>
+         <li><strong>HRHE_i</strong>: Harmonic Rhythm Entropy (intervals)</li>
          <li><strong>HRC_i</strong>: Harmonic Rhythm Coverage</li>
-         <li><strong>HRHE_o</strong>: Harmonic Rhythm Histogram Entropy (chord onsets)</li>
+         <li><strong>HRHE_o</strong>: Harmonic Rhythm Entropy (onsets)</li>
          <li><strong>HRC_o</strong>: Harmonic Rhythm Coverage</li>
          <li><strong>CBS</strong>: Chord Beat Strength</li>
       </ul>
+      <p><em>MAE table shows mean absolute difference to ground truth across matched files. Lower is better.</em></p>
     </div>
     """
 
@@ -1082,19 +1119,22 @@ def compute_and_save_html_results_by_setup(
           table {{ border-collapse: collapse; margin-bottom: 30px; }}
           th, td {{ border: 1px solid black; padding: 5px; text-align: center; }}
           caption {{ caption-side: top; font-weight: bold; font-size: 1.2em; margin-bottom: 10px; }}
+          h3 {{ margin-top: 0; }}
         </style>
       </head>
       <body>
         {legend_html}
-        {"".join(html_tables)}
+        {"".join(html_blocks)}
       </body>
     </html>
     """
     with open(output_html, "w", encoding="utf-8") as f:
         f.write(full_html)
     print(f"HTML results saved to {output_html}")
-    df_full.to_csv(output_html.replace('.html', '.csv'), index=False)
-    print(f"CSV results saved to {output_html.replace('.html', '.csv')}")
+    df_means_full.to_csv(output_html.replace('.html', '_means.csv'), index=False)
+    print(f"Means CSV results saved to {output_html.replace('.html', '_means.csv')}")
+    df_mae_full.to_csv(output_html.replace('.html', '_mae.csv'), index=False)
+    print(f"MAE CSV results saved to {output_html.replace('.html', '_mae.csv')}")
 
 if __name__ == "__main__":
     source_path = "./MIDIs/jazz2nott/real"          # folder with the source/melody MIDIs
@@ -1108,7 +1148,7 @@ if __name__ == "__main__":
         chord_track_index=1,
         melody_track_index=0,
         grouping_threshold=0.05,
-        output_html="results/results_metrics_jazz2nott.html"
+        output_html="results/results_MAE_jazz2nott.html"
     )
 
     source_path = "./MIDIs/nott2jazz/real"          # folder with the source/melody MIDIs
@@ -1122,5 +1162,5 @@ if __name__ == "__main__":
         chord_track_index=1,
         melody_track_index=0,
         grouping_threshold=0.05,
-        output_html="results/results_metrics_nott2jazz.html"
+        output_html="results/results_MAE_nott2jazz.html"
     )
