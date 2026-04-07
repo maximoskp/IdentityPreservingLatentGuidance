@@ -24,10 +24,10 @@ tokenizer = CSGridMLMTokenizer(
     use_full_range_melody=False
 )
 
-source_path = 'MIDIs/nottingham/real'
+source_path = 'MIDIs/jazz/real'
 source_files = [f for f in os.listdir(source_path) if f.endswith('.mid') or f.endswith('.midi')]
 
-target_path = 'MIDIs/jazz/real'
+target_path = 'MIDIs/nottingham/real'
 target_files = [f for f in os.listdir(target_path) if f.endswith('.mid') or f.endswith('.midi')]
 
 loss_schemes = ['none', 'f', 'fh', 'fhl', 'hl', 'l']
@@ -50,7 +50,7 @@ for loss_scheme in loss_schemes:
         guide_f_path = os.path.join(target_path, target_files[g_idx])
         mxl_folder_out = None
         prefix = 'gen/SE/' if loss_scheme != 'real' else ''
-        midi_folder_out = f'MIDIs/nott2jazz_100/{prefix}{loss_scheme}'
+        midi_folder_out = f'MIDIs/jazz2nott_100/{prefix}{loss_scheme}'
         name_suffix = (loss_scheme == 'real' or loss_scheme == 'none')*str(h_idx) + \
             (loss_scheme != 'real' and loss_scheme != 'none')*f'h{h_idx}_g{g_idx}'
 
@@ -122,5 +122,5 @@ for loss_scheme in loss_schemes:
 df_bin = pd.DataFrame.from_dict(results_bin_all)
 df_dist = pd.DataFrame.from_dict(results_dist_all)
 
-df_bin.to_csv(os.path.join(results_base_path, 'nott2_gjt_bin.csv'))
-df_dist.to_csv(os.path.join(results_base_path, 'nott2_gjt_dist.csv'))
+df_bin.to_csv(os.path.join(results_base_path, 'gjt2_nott_bin.csv'))
+df_dist.to_csv(os.path.join(results_base_path, 'gjt2_nott_dist.csv'))
