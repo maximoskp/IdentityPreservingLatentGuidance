@@ -7,3 +7,5 @@ https://github.com/jryban/frechet-music-distance
 3. Run train_all_
 
 4. Run run_eval_
+
+5. 

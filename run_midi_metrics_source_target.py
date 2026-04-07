@@ -761,7 +761,21 @@ def compute_all_metrics(midi_file_path, chord_track_index=1, melody_track_index=
     
     return metrics
 
-
+def source_target_distances(generated, source, target):
+    """
+    Compute how close are the generated metrics to the
+    source vs the target. Metrics are given as dictionaries.
+    Outputs are again dictionaries of the same structure.
+    bin_out: for each metric 0 if closer to source, 1 to target
+    dist_diff: distance from target minus distance from source
+    dist_diff is more negative if closer to source
+    """
+    bin_out = {}
+    dist_diff = {}
+    for k, v in generated.items():
+        bin_out[k] = int( abs(source[k] - v) > abs(target[k] - v)  )
+        dist_diff[k] = abs(target[k] - v) - abs(source[k] - v)
+    return bin_out, dist_diff
 
 def _file_id_from_name(filename):
     """
