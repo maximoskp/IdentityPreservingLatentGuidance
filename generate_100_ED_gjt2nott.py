@@ -1,4 +1,4 @@
-from generate_utils import generate_files_with_nucleus, load_SEFiLMModel
+from generate_utils import generate_files_with_nucleus, load_EDFiLMModel
 import GridMLM_tokenizers
 from GridMLM_tokenizers import CSGridMLMTokenizer
 import os
@@ -10,7 +10,7 @@ from run_midi_metrics_source_target import compute_all_metrics, has_non_positive
 import pandas as pd
 
 total_examples = 100
-results_base_path = 'results/metrics_100/SE/'
+results_base_path = 'results/metrics_100/ED/'
 os.makedirs(results_base_path, exist_ok=True)
 
 device_name = 'cuda:0'
@@ -49,13 +49,13 @@ for loss_scheme in loss_schemes:
         g_idx = np.random.randint(len(target_files))
         guide_f_path = os.path.join(target_path, target_files[g_idx])
         mxl_folder_out = None
-        prefix = 'gen/SE/' if loss_scheme != 'real' else ''
+        prefix = 'gen/ED/' if loss_scheme != 'real' else ''
         midi_folder_out = f'MIDIs/jazz2nott_100/{prefix}{loss_scheme}'
         name_suffix = (loss_scheme == 'real' or loss_scheme == 'none')*str(h_idx) + \
             (loss_scheme != 'real' and loss_scheme != 'none')*f'h{h_idx}_g{g_idx}'
 
         if loss_scheme == 'real' or loss_scheme == 'none':
-            model = load_SEFiLMModel(
+            model = load_EDFiLMModel(
                 tokenizer,
                 'l',
                 device_name,
@@ -63,7 +63,7 @@ for loss_scheme in loss_schemes:
             )
             # guidance_f_path = None
         else:
-            model = load_SEFiLMModel(
+            model = load_EDFiLMModel(
                 tokenizer,
                 loss_scheme,
                 device_name,
@@ -92,24 +92,27 @@ for loss_scheme in loss_schemes:
         # midi out path
         midi_out_path = os.path.join(midi_folder_out, 'gen_' + name_suffix + '.mid')
 
-        # compute metrics
-        source_metrics = compute_all_metrics(input_f_path)
-        target_metrics = compute_all_metrics(guide_f_path)
-        gen_metrics = compute_all_metrics(midi_out_path)
+        try:
+            # compute metrics
+            source_metrics = compute_all_metrics(input_f_path)
+            target_metrics = compute_all_metrics(guide_f_path)
+            gen_metrics = compute_all_metrics(midi_out_path)
 
-        # CHE CC CTD CTnCTR PCS MCTD HRHE HRC CBS
-        if not has_non_positive(gen_metrics):
-            num_gen += 1
-            bin_out, dist_diff = source_target_distances(gen_metrics, source_metrics, target_metrics)
-            for k, v in bin_out.items():
-                if k in bin_all.keys():
-                    bin_all[k] += bin_out[k]
-                    dist_all[k] += dist_all[k]
-                else:
-                    bin_all[k] = bin_out[k]
-                    dist_all[k] = dist_diff[k]
-            # end for items
-        # end if has_non_positive
+            # CHE CC CTD CTnCTR PCS MCTD HRHE HRC CBS
+            if not has_non_positive(gen_metrics):
+                num_gen += 1
+                bin_out, dist_diff = source_target_distances(gen_metrics, source_metrics, target_metrics)
+                for k, v in bin_out.items():
+                    if k in bin_all.keys():
+                        bin_all[k] += bin_out[k]
+                        dist_all[k] += dist_all[k]
+                    else:
+                        bin_all[k] = bin_out[k]
+                        dist_all[k] = dist_diff[k]
+                # end for items
+            # end if has_non_positive
+        except:
+            print(f'problem with file: {midi_out_path}')
     # end while 100 counter
     # make average metrics
     results_bin_all[loss_scheme] = {}

@@ -8,4 +8,6 @@ https://github.com/jryban/frechet-music-distance
 
 4. Run run_eval_
 
-5. 
+5. First run some script that will produce the true midis, e.g., generate_SE_nott2gjt.py etc.
+
+6. Then run generate_100_

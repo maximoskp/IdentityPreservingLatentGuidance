@@ -82,7 +82,7 @@ for loss_scheme in loss_schemes:
             use_constraints=False,
             intertwine_bar_info=True, # no bar default
             normalize_tonality=False,
-            temperature=0.5,
+            temperature=1.0,
             p=0.9,
             unmasking_order='certain',
             create_gen = loss_scheme != 'real',
@@ -119,8 +119,8 @@ for loss_scheme in loss_schemes:
         results_dist_all[loss_scheme][k] = dist_all[k]/total_examples
     # end for loss_schemes
 # save to csvs
-df_bin = pd.DataFrame.from_dict(results_bin_all)
-df_dist = pd.DataFrame.from_dict(results_dist_all)
+df_bin = pd.DataFrame.from_dict(results_bin_all, orient='index')
+df_dist = pd.DataFrame.from_dict(results_dist_all, orient='index')
 
 df_bin.to_csv(os.path.join(results_base_path, 'nott2_gjt_bin.csv'))
 df_dist.to_csv(os.path.join(results_base_path, 'nott2_gjt_dist.csv'))
