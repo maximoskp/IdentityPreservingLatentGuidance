@@ -79,7 +79,7 @@ for name in model_names:
                 use_constraints=False,
                 intertwine_bar_info=True, # no bar default
                 normalize_tonality=False,
-                temperature=0.5,
+                temperature=1.0,
                 p=0.9,
                 unmasking_order='certain',
                 create_gen = True,

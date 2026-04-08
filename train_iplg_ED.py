@@ -125,7 +125,7 @@ def main():
         guidance_dim=d_model,
         device=device,
     )
-    checkpoint = torch.load('saved_models/ED/pretrained_epoch196_nvis5.pt', map_location=device_name)
+    checkpoint = torch.load('saved_models/ED/pretrained_epoch182_nvis20.pt', map_location=device_name)
     transformer_model.load_state_dict(checkpoint)
     transformer_model.to(device)
     optimizer = AdamW(transformer_model.film_parameters(), lr=lr)

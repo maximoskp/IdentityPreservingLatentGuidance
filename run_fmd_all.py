@@ -3,6 +3,9 @@ from frechet_music_distance.gaussian_estimators import LeoditWolfEstimator, MaxL
 from frechet_music_distance.models import CLaMP2Extractor, CLaMPExtractor
 import pandas as pd
 import os
+from frechet_music_distance.utils import clear_cache
+
+clear_cache()
 
 extractor = CLaMP2Extractor(verbose=True)
 estimator = ShrinkageEstimator(shrinkage=0.1)
@@ -43,4 +46,7 @@ for i_dataset in range(len(datasets)):
     # save to csvs
     df = pd.DataFrame.from_dict(dataset_results, orient='index')
     df.to_csv(os.path.join(results_base_path, f'{datasets[i_dataset]}.csv'))
+    latex_table = df.to_latex(float_format="%.4f")
+    with open(os.path.join(results_base_path, f'{datasets[i_dataset]}.tex'), "w") as f:
+        f.write(latex_table)
 # end for datasets
