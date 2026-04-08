@@ -774,7 +774,7 @@ def source_target_distances(generated, source, target):
     dist_diff = {}
     for k, v in generated.items():
         bin_out[k] = int( abs(source[k] - v) > abs(target[k] - v)  )
-        dist_diff[k] = abs(target[k] - v) - abs(source[k] - v)
+        dist_diff[k] =  abs(source[k] - v) - abs(target[k] - v)
     return bin_out, dist_diff
 
 def _file_id_from_name(filename):

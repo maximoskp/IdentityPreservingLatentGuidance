@@ -82,7 +82,7 @@ for loss_scheme in loss_schemes:
             use_constraints=False,
             intertwine_bar_info=True, # no bar default
             normalize_tonality=False,
-            temperature=1.0,
+            temperature=1.5,
             p=0.9,
             unmasking_order='certain',
             create_gen = loss_scheme != 'real',
@@ -104,7 +104,7 @@ for loss_scheme in loss_schemes:
             for k, v in bin_out.items():
                 if k in bin_all.keys():
                     bin_all[k] += bin_out[k]
-                    dist_all[k] += dist_all[k]
+                    dist_all[k] += dist_diff[k]
                 else:
                     bin_all[k] = bin_out[k]
                     dist_all[k] = dist_diff[k]
