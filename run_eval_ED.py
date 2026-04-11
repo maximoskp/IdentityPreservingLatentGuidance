@@ -112,8 +112,8 @@ for data_files in [
     df = df.T
     df['foreign_strength'] = df['fguide_funique'] / df['fguide_hunique']
     df['home_strength'] = df['hguide_hunique'] / df['hguide_funique']
-    df.to_csv(f'{main_results_path}/unique_{data_files[0]}_{data_files[1]}.csv', float_format='%.6f')
-    latex_table = df.to_latex(float_format="%.6f")
+    df.to_csv(f'{main_results_path}/unique_{data_files[0]}_{data_files[1]}.csv', float_format='%.2f')
+    latex_table = df.to_latex(float_format="%.2f")
     with open(f'{main_results_path}/unique_{data_files[0]}_{data_files[1]}.tex', "w") as f:
         f.write(latex_table)
     print(df)
@@ -122,8 +122,8 @@ for data_files in [
     df = df.T
     # df['foreign_strength'] = df['confident_fguide_funique'] / df['confident_fguide_hunique']
     # df['home_strength'] = df['confident_hguide_hunique'] / df['confident_hguide_funique']
-    df.to_csv(f'{main_results_path}/conf_{data_files[0]}_{data_files[1]}.csv', float_format='%.6f')
-    latex_table = df.to_latex(float_format="%.6f")
+    df.to_csv(f'{main_results_path}/conf_{data_files[0]}_{data_files[1]}.csv', float_format='%.2f')
+    latex_table = df.to_latex(float_format="%.2f")
     with open(f'{main_results_path}/conf_{data_files[0]}_{data_files[1]}.tex', "w") as f:
         f.write(latex_table)
     print(df)

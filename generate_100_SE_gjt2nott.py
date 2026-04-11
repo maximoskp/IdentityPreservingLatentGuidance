@@ -8,6 +8,16 @@ import torch
 import numpy as np
 from run_midi_metrics_source_target import compute_all_metrics, has_non_positive, source_target_distances
 import pandas as pd
+from frechet_music_distance import FrechetMusicDistance
+from frechet_music_distance.gaussian_estimators import LeoditWolfEstimator, MaxLikelihoodEstimator, OASEstimator, BootstrappingEstimator, ShrinkageEstimator
+from frechet_music_distance.models import CLaMP2Extractor, CLaMPExtractor
+from frechet_music_distance.utils import clear_cache
+
+clear_cache()
+
+extractor = CLaMP2Extractor(verbose=True)
+estimator = ShrinkageEstimator(shrinkage=0.1)
+fmd = FrechetMusicDistance(feature_extractor=extractor, gaussian_estimator=estimator, verbose=True)
 
 total_examples = 100
 results_base_path = 'results/metrics_100/SE/'
@@ -35,11 +45,16 @@ loss_schemes = ['none', 'f', 'fh', 'fhl', 'hl', 'l']
 results_bin_all = {}
 results_dist_all = {}
 
+results_fmd_bin = {}
+results_fmd_ratio = {}
+
 for loss_scheme in loss_schemes:
     print(f'loss scheme: {loss_scheme}')
     num_gen = 0
     bin_all = {}
     dist_all = {}
+    fmd_bin = 0
+    fmd_ratio = 0
     while num_gen < total_examples:
         print(f'loss scheme: {loss_scheme} - trying: {num_gen} / {total_examples}')
         # home file
@@ -82,7 +97,7 @@ for loss_scheme in loss_schemes:
             use_constraints=False,
             intertwine_bar_info=True, # no bar default
             normalize_tonality=False,
-            temperature=1.5,
+            temperature=1.0,
             p=0.9,
             unmasking_order='certain',
             create_gen = loss_scheme != 'real',
@@ -109,11 +124,24 @@ for loss_scheme in loss_schemes:
                     bin_all[k] = bin_out[k]
                     dist_all[k] = dist_diff[k]
             # end for items
+            # fmd
+            source_fmd = fmd.score_individual(
+                reference_path=source_path,
+                test_song_path=midi_out_path,
+            )
+            target_fmd = fmd.score_individual(
+                reference_path=target_path,
+                test_song_path=midi_out_path,
+            )
+            fmd_bin += int(target_fmd < source_fmd)/total_examples
+            fmd_ratio += (target_fmd/source_fmd)/total_examples
         # end if has_non_positive
     # end while 100 counter
     # make average metrics
     results_bin_all[loss_scheme] = {}
     results_dist_all[loss_scheme] = {}
+    results_fmd_bin[loss_scheme] = fmd_bin
+    results_fmd_ratio[loss_scheme] = fmd_ratio
     for k in bin_all.keys():
         results_bin_all[loss_scheme][k] = bin_all[k]/total_examples
         results_dist_all[loss_scheme][k] = dist_all[k]/total_examples
@@ -124,3 +152,15 @@ df_dist = pd.DataFrame.from_dict(results_dist_all, orient='index')
 
 df_bin.to_csv(os.path.join(results_base_path, 'gjt2_nott_bin.csv'))
 df_dist.to_csv(os.path.join(results_base_path, 'gjt2_nott_dist.csv'))
+
+df_bin = pd.DataFrame.from_dict(results_fmd_bin, orient='index')
+df_ratio = pd.DataFrame.from_dict(results_fmd_ratio, orient='index')
+
+df_bin.to_csv(os.path.join(results_base_path, 'nott2_gjt_fmd_bin.csv'))
+df_ratio.to_csv(os.path.join(results_base_path, 'nott2_gjt_fmd_ratio.csv'))
+latex_table = df_bin.to_latex(float_format="%.4f")
+with open(os.path.join(results_base_path, 'nott2_gjt_fmd_bin.tex'), "w") as f:
+    f.write(latex_table)
+latex_table = df_ratio.to_latex(float_format="%.4f")
+with open(os.path.join(results_base_path, 'nott2_gjt_fmd_ratio.tex'), "w") as f:
+    f.write(latex_table)

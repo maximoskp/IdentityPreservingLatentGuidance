@@ -16,7 +16,7 @@ os.makedirs(results_base_path, exist_ok=True)
 
 datasets = ['nott2jazz', 'jazz2nott']
 models = ['SE', 'ED']
-loss_schemes = ['none', 'f', 'fh', 'fhl', 'hl', 'l']
+loss_schemes = ['f', 'fh', 'fhl', 'hl', 'l']
 
 for i_dataset in range(len(datasets)):
     dataset_results = {}
@@ -28,7 +28,7 @@ for i_dataset in range(len(datasets)):
             tmp_target_root = datasets[ (i_dataset+1)%2 ]
             source_path = f"./MIDIs/{tmp_source_root}/real"
             target_path = f"./MIDIs/{tmp_target_root}/real"
-            gen_path = f"./MIDIs/{tmp_source_root}/gen/{model}/{loss_scheme}"
+            gen_path = f"./MIDIs/{tmp_source_root}_100/gen/{model}/{loss_scheme}"
             # compute fmd
             source_score = fmd.score(
                 reference_path=source_path,
@@ -45,8 +45,8 @@ for i_dataset in range(len(datasets)):
     # save for dataset
     # save to csvs
     df = pd.DataFrame.from_dict(dataset_results, orient='index')
-    df.to_csv(os.path.join(results_base_path, f'{datasets[i_dataset]}.csv'))
+    df.to_csv(os.path.join(results_base_path, f'{datasets[i_dataset]}_100.csv'))
     latex_table = df.to_latex(float_format="%.2f")
-    with open(os.path.join(results_base_path, f'{datasets[i_dataset]}.tex'), "w") as f:
+    with open(os.path.join(results_base_path, f'{datasets[i_dataset]}_100.tex'), "w") as f:
         f.write(latex_table)
 # end for datasets
