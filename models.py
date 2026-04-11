@@ -274,14 +274,14 @@ class SEASModel(nn.Module):
             encoded = layer(encoded)
             # capture layer output
             if get_layers_output:
-                layers_output[i] = encoded
+                layers_output[i] = encoded[:, -self.grid_length:, :].mean(axis=1).unsqueeze(1)
             # guide process
             if steering_vectors is not None and i in steering_vectors:
                 h = steering_vectors[i]
                 # ensure correct shape
                 if h.dim() == 2:  # (1, d_model)
                     h = h.unsqueeze(1)  # (1,1,d_model)
-                encoded = encoded + alpha * h
+                encoded[:, -self.grid_length:, :] += alpha * h
         encoded = self.output_norm(encoded)
 
         # Optionally decode harmony logits (only last grid_length tokens)
