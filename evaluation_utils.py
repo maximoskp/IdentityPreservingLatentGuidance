@@ -448,6 +448,7 @@ def evaluate_actisteer_convergence(
                     harmony_gt = batch["harmony_ids"].to(device)
                     # home_guidance_embeddings = batch["latent"].to(device)
                     home_guidance = get_actisteer_guidance(
+                        transformer_model,
                         bar_token_id,
                         mask_token_id,
                         melody_grid,
@@ -460,12 +461,13 @@ def evaluate_actisteer_convergence(
                     mixed_batch_1 = make_mixed_batch(foreign_batch, "latent")
                     # foreign_guidance = mixed_batch_1["latent"].to(device)
                     foreign_guidance = get_actisteer_guidance(
+                        transformer_model,
                         bar_token_id,
                         mask_token_id,
                         melody_grid,
                         harmony_gt,
-                        mixed_batch_1["pianoroll"],
-                        mixed_batch_1["harmony_ids"]
+                        mixed_batch_1["pianoroll"].to(device),
+                        mixed_batch_1["harmony_ids"].to(device)
                     )
                     foreign_guidance_layers = {k: foreign_guidance[k] for k in layers_to_steer}
                     foreign_ids = mixed_batch_1['harmony_ids'].to(device)
@@ -478,14 +480,14 @@ def evaluate_actisteer_convergence(
                     )
 
                     # Step 1: contrastive latent attraction validation
-                    logits, hidden = transformer_model(
+                    logits = transformer_model(
                         melody_grid.to(device),
                         harmony_input.to(device),
                         steering_vectors=foreign_guidance_layers,
                         alpha=alpha,
                         get_layers_output=False
                     )
-                    foreign_guidance_loss = latent_loss_fn(foreign_guidance,hidden)
+                    # foreign_guidance_loss = latent_loss_fn(foreign_guidance,hidden)
 
                     running_foreign_logits_loss += logits_loss_fn(logits.view(-1, logits.size(-1)), harmony_target.view(-1)).item()
                     val_foreign_logits_loss = running_foreign_logits_loss/batch_num
@@ -512,7 +514,7 @@ def evaluate_actisteer_convergence(
                     val_foreign_acc = running_foreign_acc/batch_num
 
                     # Step 2: home attraction validation
-                    logits, hidden = transformer_model(
+                    logits = transformer_model(
                         melody_grid.to(device),
                         harmony_input.to(device),
                         steering_vectors=home_guidance_layers,
@@ -546,10 +548,10 @@ def evaluate_actisteer_convergence(
                     val_home_acc = running_home_acc/batch_num
 
                     # partial losses
-                    running_foreign_loss += foreign_guidance_loss.item()
-                    val_foreign_loss = running_foreign_loss/batch_num
+                    # running_foreign_loss += foreign_guidance_loss.item()
+                    # val_foreign_loss = running_foreign_loss/batch_num
                     # running_home_loss += home_guidance_loss.item()
-                    val_home_loss = running_home_loss/batch_num
+                    # val_home_loss = running_home_loss/batch_num
 
                     # # Step 3: no attraction
                     # logits, hidden = transformer_model(
@@ -591,13 +593,6 @@ def evaluate_actisteer_convergence(
             # end with tqdm
     # end with no grad
     return {
-        '4_home_logits_loss':  val_home_logits_loss,
-        '5_foreign_logits_loss':  val_foreign_logits_loss,
-        '6_no2home_logits_loss': val_no2home_logits_loss,
-        '7_home_acc': val_home_acc,
-        '8_foreign_acc': val_foreign_acc,
-        '9_no2home_acc': val_no2home_acc
-    },{
         'fguide_hunique': fguide_hunique,
         'fguide_funique': fguide_funique,
         'hguide_hunique': hguide_hunique,
