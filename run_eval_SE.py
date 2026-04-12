@@ -53,7 +53,7 @@ for data_files in [
     results_latent = {}
     results_logits = {}
     results_unique = {}
-    results_conf= {}
+    results_conf = {}
 
     for loss_scheme in ['f', 'fh', 'fhl', 'fl', 'hl', 'l']:
         d_model = 512

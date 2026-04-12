@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from train_utils import apply_structured_masking, apply_focal_sharpness
+from train_utils import apply_structured_masking, apply_focal_sharpness, full_to_partial_masking
 from music21 import harmony, stream, metadata, chord, note, key, meter, tempo, duration
 import mir_eval
 import numpy as np
@@ -515,3 +515,39 @@ def generate_files_with_nucleus(
         'hidden': hidden
     }
 # end generate_files_with_nucleus
+
+def get_actisteer_guidance(
+        model,
+        bar_token_id,
+        mask_token_id,
+        source_melody,
+        source_harmony,
+        target_melody,
+        target_harmony
+    ):
+    # for source, we need to consider harmony fully masked, except from bar tokens
+    source_harmony_masks, _ = full_to_partial_masking(
+        source_harmony,
+        mask_token_id,
+        0,
+        bar_token_id=bar_token_id
+    )
+    # get the "natural" harmony embeddings for this melody - consider mask harmony tokens
+    _, source_melody_layers_output = model(
+        source_melody,
+        source_harmony_masks, 
+        get_layers_output=True
+    )
+    # for the target harmony, we need both melody and harmony token ids inside
+    _, target_melody_harmony_layers_output = model(
+        target_melody,
+        target_harmony,
+        get_layers_output=True
+    )
+    # get the difference as activation steering
+    h = {}
+    for k,v in target_melody_harmony_layers_output.items():
+        h[k] = v - source_melody_layers_output[k]
+        h[k] = h[k] / (h[k].norm() + 1e-6)
+    return h
+# end get_actisteer_guidance
