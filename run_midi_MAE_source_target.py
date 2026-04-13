@@ -728,8 +728,6 @@ def compute_all_metrics(midi_file_path, chord_track_index=1, melody_track_index=
       - CTD: Chord Tonal Distance (lookup-based)
       - HRHE_i: Harmonic Rhythm Histogram Entropy (inter-chord intervals)
       - HRC_i: Harmonic Rhythm Coverage
-      - HRHE_o: Harmonic Rhythm Histogram Entropy (chord onsets)
-      - HRC_o: Harmonic Rhythm Coverage
       - CBS: Chord Beat Strength
       - CTnCTR: Chord Tone to Non-Chord Tone Ratio
       - PCS: Pitch Consonance Score
@@ -753,7 +751,6 @@ def compute_all_metrics(midi_file_path, chord_track_index=1, melody_track_index=
     metrics["CC"] = compute_chord_coverage(chords)
     metrics["CTD"] = compute_chord_tonal_distance(chords)
     metrics["HRHE_i"], metrics["HRC_i"] = compute_HRHE_and_HRC_intervals(chords_with_times, grouping_threshold)
-    metrics["HRHE_o"], metrics["HRC_o"] = compute_HRHE_and_HRC_onsets(midi_file_path, chord_track_index, grouping_threshold)
     metrics["CBS"] = compute_CBS(midi_file_path, chord_track_index, grouping_threshold)
     metrics["CTnCTR"] = compute_ctnctr(midi_file_path, chord_track_index, melody_track_index, grouping_threshold)
     metrics["PCS"] = compute_pcs(midi_file_path, chord_track_index, melody_track_index, grouping_threshold)
@@ -898,7 +895,7 @@ def mae_row_from_pairs(instance_name, pair_records):
 
 
 def highlight_lowest(series):
-    metric_columns = ["CHE", "CC", "CTD", "CTnCTR", "PCS", "MCTD", "HRHE_i", "HRC_i", "HRHE_o", "HRC_o", "CBS"]
+    metric_columns = ["CHE", "CC", "CTD", "CTnCTR", "PCS", "MCTD", "HRHE_i", "HRC_i", "CBS"]
     if series.name not in metric_columns or series.dropna().empty:
         return ['' for _ in series]
     min_val = series.min(skipna=True)
@@ -912,7 +909,7 @@ def highlight_closest(series):
     value and mark (with a lightgreen background) the cell(s) in the generated rows
     that are closest (in absolute difference) to that ground truth.
     """
-    metric_columns = ["CHE", "CC", "CTD", "CTnCTR", "PCS", "MCTD", "HRHE_i", "HRC_i", "HRHE_o", "HRC_o", "CBS"]
+    metric_columns = ["CHE", "CC", "CTD", "CTnCTR", "PCS", "MCTD", "HRHE_i", "HRC_i", "CBS"]
     if series.name not in metric_columns:
         return ['' for _ in series]
     ground_truth = series.iloc[0]
@@ -1039,7 +1036,7 @@ def compute_and_save_html_results_by_setup(
 ):
     html_blocks = []
 
-    metric_cols = ["CHE", "CC", "CTD", "CTnCTR", "PCS", "MCTD", "HRHE_i", "HRC_i", "HRHE_o", "HRC_o", "CBS"]
+    metric_cols = ["CHE", "CC", "CTD", "CTnCTR", "PCS", "MCTD", "HRHE_i", "HRC_i", "CBS"]
     df_means_full = pd.DataFrame(columns=["Instance"] + metric_cols)
     df_mae_full = pd.DataFrame(columns=["Instance"] + metric_cols)
 
@@ -1102,8 +1099,6 @@ def compute_and_save_html_results_by_setup(
          <li><strong>MCTD</strong>: Melody-chord Tonal Distance</li>
          <li><strong>HRHE_i</strong>: Harmonic Rhythm Entropy (intervals)</li>
          <li><strong>HRC_i</strong>: Harmonic Rhythm Coverage</li>
-         <li><strong>HRHE_o</strong>: Harmonic Rhythm Entropy (onsets)</li>
-         <li><strong>HRC_o</strong>: Harmonic Rhythm Coverage</li>
          <li><strong>CBS</strong>: Chord Beat Strength</li>
       </ul>
       <p><em>MAE table shows mean absolute difference to ground truth across matched files. Lower is better.</em></p>
