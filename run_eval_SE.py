@@ -152,11 +152,11 @@ for data_files in [
     logits_all = {}
     confidence_all = {}
     # for layers_to_steer in [ [4], [5], [6], [7], [4,5], [5,6], [6,7] ]:
-    for layers_to_steer in [ [5], [6], [5,6], [7], [6,7], [5,6,7] ]:
+    for layers_to_steer in [ [4], [5], [4,5], [6], [5,6], [4,5,6], [7], [6,7], [5,6,7], [3,4,5,6,7], [0,1,2,3,4,5,6,7] ]:
         layers_logits = {}
         layers_confidence = {}
         # for alpha in [0.1, 0.3, 0.5, 0.7, 1.0, 1.5]:
-        for alpha in [0.1, 0.5, 1.0, 1.5]:
+        for alpha in [0.1, 0.5, 1.0, 1.5, 2.5, 5.0, 7.0, 10.0, 12.5, 15.0, 20.0]:
             print(f'actisteer: {data_files[0]} - {data_files[0]}')
             print(f'{layers_to_steer} - {alpha}')
             logits_res, confidence_res = evaluate_actisteer_convergence(

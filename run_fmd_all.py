@@ -15,19 +15,21 @@ results_base_path = 'results/fmd'
 os.makedirs(results_base_path, exist_ok=True)
 
 datasets = ['nott2jazz', 'jazz2nott']
-models = ['SE', 'ED']
-loss_schemes = ['none', 'f', 'fh', 'fhl', 'hl', 'l']
+# models = ['SE', 'ED']
+models = ['SE']
+# loss_schemes = ['none', 'f', 'fh', 'fhl', 'hl', 'l']
 
 for i_dataset in range(len(datasets)):
     dataset_results = {}
+    tmp_source_root = datasets[i_dataset]
+    tmp_target_root = datasets[ (i_dataset+1)%2 ]
+    source_path = f"./MIDIs/{tmp_source_root}/real"
+    target_path = f"./MIDIs/{tmp_target_root}/real"
     for model in models:
         dataset_results[model] = {}
+        loss_schemes = os.listdir(f"./MIDIs/{tmp_source_root}/gen/{model}")
         for loss_scheme in loss_schemes:
             print(f'running for {datasets[i_dataset]} - {model} - {loss_scheme}')
-            tmp_source_root = datasets[i_dataset]
-            tmp_target_root = datasets[ (i_dataset+1)%2 ]
-            source_path = f"./MIDIs/{tmp_source_root}/real"
-            target_path = f"./MIDIs/{tmp_target_root}/real"
             gen_path = f"./MIDIs/{tmp_source_root}/gen/{model}/{loss_scheme}"
             # compute fmd
             source_score = fmd.score(
@@ -39,7 +41,7 @@ for i_dataset in range(len(datasets)):
                 test_path=gen_path
             )
             # compute and store ratio
-            dataset_results[model][loss_scheme] = source_score/target_score
+            dataset_results[model][loss_scheme] = f'{source_score:.2f}/{target_score:.2f}'
         # end for loss_schemes
     # end for models
     # save for dataset

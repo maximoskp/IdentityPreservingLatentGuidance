@@ -5,7 +5,7 @@ from music21 import harmony, stream, metadata, chord, note, key, meter, tempo, d
 import mir_eval
 import numpy as np
 from copy import deepcopy
-from models import SEFiLMModel, EDFiLMModel
+from models import SEFiLMModel, EDFiLMModel, SEASModel
 import os
 from music_utils import transpose_score
 
@@ -265,6 +265,8 @@ def nucleus_token_by_token_generate(
         melody_grid,            # (1, seq_len, input_dim)
         guidance_vector,        # (1, guidance_dim) or None
         mask_token_id,          # token ID used for masking
+        steering_vec = None,
+        steering_alpha = 1.0,
         temperature=1.0,        # optional softmax temperature
         pad_token_id=None,      # token ID for <pad>
         nc_token_id=None,       # token ID for <nc>
@@ -275,6 +277,7 @@ def nucleus_token_by_token_generate(
     ):
     device = melody_grid.device
     seq_len = melody_grid.shape[1]
+    hidden = None
 
     # --- 1. Initialize ---
     visible_harmony = torch.full((1, seq_len), mask_token_id, dtype=torch.long, device=device)
@@ -297,12 +300,21 @@ def nucleus_token_by_token_generate(
     
     while (visible_harmony == mask_token_id).any():
         with torch.no_grad():
-            logits, hidden = model(
-                melody_grid=melody_grid.to(model.device),
-                harmony_tokens=visible_harmony.to(model.device),
-                guidance_embedding=guidance_embedding,
-                return_hidden=True
-            )  # (1, seq_len, vocab_size)
+            if steering_vec:
+                logits = model(
+                    melody_grid=melody_grid.to(model.device),
+                    harmony_tokens=visible_harmony.to(model.device),
+                    steering_vectors=steering_vec,
+                    alpha=steering_alpha,
+                    get_layers_output=False
+                )  # (1, seq_len, vocab_size)
+            else:
+                logits, hidden = model(
+                    melody_grid=melody_grid.to(model.device),
+                    harmony_tokens=visible_harmony.to(model.device),
+                    guidance_embedding=guidance_embedding,
+                    return_hidden=True
+                )  # (1, seq_len, vocab_size)
         # --- Masked position selection ---
         masked_positions = (visible_harmony == mask_token_id).squeeze(0).nonzero(as_tuple=True)[0]
         if masked_positions.numel() == 0:
@@ -372,6 +384,8 @@ def generate_files_with_nucleus(
         name_suffix,
         guidance_f_path = None,
         guidance_vec = None,
+        steering_vec = None,
+        steering_alpha = 1.0,
         use_constraints=False,
         intertwine_bar_info=False, # no bar default
         normalize_tonality=False,
@@ -424,6 +438,8 @@ def generate_files_with_nucleus(
             melody_grid=melody_grid.to(model.device),
             guidance_vector=guidance_vec,
             mask_token_id=tokenizer.mask_token_id,
+            steering_vec = steering_vec,
+            steering_alpha = steering_alpha,
             temperature=temperature,
             pad_token_id=pad_token_id,      # token ID for <pad>
             nc_token_id=nc_token_id,       # token ID for <nc>
@@ -551,3 +567,33 @@ def get_actisteer_guidance(
         h[k] = h[k] / (h[k].norm() + 1e-6)
     return h
 # end get_actisteer_guidance
+
+def load_SEASModel(
+        tokenizer,
+        device_name,
+        d_model=512
+    ):
+    if device_name == 'cpu':
+        device = torch.device('cpu')
+    else:
+        if torch.cuda.is_available():
+            device = torch.device(device_name)
+        else:
+            print('Selected device not available: ' + device_name)
+    # end device selection
+    transformer_model = SEASModel(
+        chord_vocab_size=len(tokenizer.vocab),
+        d_model=d_model,
+        nhead=8,
+        num_layers=8,
+        grid_length=80,
+        pianoroll_dim=tokenizer.pianoroll_dim,
+        guidance_dim=d_model,
+        device=device,
+    )
+    checkpoint = torch.load('saved_models/iplg/SE/iplg_l_loss.pt', map_location=device_name)
+    transformer_model.load_state_dict(checkpoint)
+    transformer_model.to(device)
+    transformer_model.eval()
+    return transformer_model
+# end load_SEASModel
