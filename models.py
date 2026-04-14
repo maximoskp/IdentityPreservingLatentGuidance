@@ -196,12 +196,12 @@ class SEASModel(nn.Module):
         # Dropout
         self.dropout = nn.Dropout(dropout)
         # Transformer Encoder
-        encoder_layer = TransformerEncoderLayerWithAttn(d_model=d_model, 
-                                                   nhead=nhead, 
-                                                   dim_feedforward=dim_feedforward,
-                                                   dropout=dropout,
-                                                   activation='gelu',
-                                                   batch_first=True)
+        # encoder_layer = TransformerEncoderLayerWithAttn(d_model=d_model, 
+        #                                            nhead=nhead, 
+        #                                            dim_feedforward=dim_feedforward,
+        #                                            dropout=dropout,
+        #                                            activation='gelu',
+        #                                            batch_first=True)
         # self.encoder = nn.TransformerEncoder(
         #                 encoder_layer,
         #                 num_layers=num_layers)
@@ -707,3 +707,170 @@ class EDFiLMModel(nn.Module):
             yield from m.parameters()
     # end film_parameters
 # end EDFiLMModel
+
+# ============== Activation Steering ==================
+
+class EDASModel(nn.Module):
+    def __init__(
+        self,
+        chord_vocab_size,
+        d_model=512,
+        nhead=8,
+        num_layers=8,
+        dim_feedforward=2048,
+        pianoroll_dim=13,
+        grid_length=80,
+        dropout=0.3,
+        guidance_dim=None,
+        device='cpu'
+    ):
+        super().__init__()
+        self.device = device
+        self.d_model = d_model
+        self.grid_length = grid_length
+        self.guidance_dim = guidance_dim
+
+        self.melody_proj = nn.Linear(pianoroll_dim, d_model, device=device)
+        self.harmony_embedding = nn.Embedding(chord_vocab_size, d_model, device=device)
+
+        self.shared_pos = sinusoidal_positional_encoding(self.grid_length, d_model, device)
+        # self.shared_pos = torch.cat([shared, shared], dim=1)
+
+        self.dropout = nn.Dropout(dropout)
+
+        # --- Encoder Layers ---
+        self.encoder_layers = nn.ModuleList()
+        # --- Decoder Layers with FiLM ---
+        self.decoder_layers = nn.ModuleList()
+        self.film_layers = nn.ModuleList()
+        self.tgt_mask = self.generate_square_subsequent_mask(self.grid_length).to(device)
+
+        # Transformer Encoder
+        encoder_layer = TransformerEncoderLayerWithAttn(d_model=d_model, 
+                                                   nhead=nhead, 
+                                                   dim_feedforward=dim_feedforward,
+                                                   dropout=dropout,
+                                                   activation='gelu',
+                                                   batch_first=True)
+        self.encoder = nn.TransformerEncoder(
+                        encoder_layer,
+                        num_layers=num_layers)
+
+        for _ in range(num_layers):
+            base_layer = TransformerDecoderLayer(
+                d_model=d_model,
+                nhead=nhead,
+                dim_feedforward=dim_feedforward,
+                dropout=dropout,
+                activation='gelu',
+                batch_first=True
+            )
+            self.decoder_layers.append(
+                TransformerDecoderLayerWithFiLM(
+                    base_layer,
+                    d_model=d_model,
+                    guidance_dim=guidance_dim
+                )
+            )
+            self.film_layers.append(self.decoder_layers[-1].film)
+
+        self.output_head = nn.Linear(d_model, chord_vocab_size, device=device)
+
+        self.input_norm = nn.LayerNorm(d_model)
+        self.output_norm = nn.LayerNorm(d_model)
+
+        self.to(device)
+    # end init
+
+    def forward(
+            self,
+            melody_grid,
+            harmony_tokens=None,
+            steering_vectors=None,
+            alpha=1.0,
+            get_layers_output=False
+        ):
+        B = melody_grid.size(0)
+        device = self.device
+
+        melody_emb = self.melody_proj(melody_grid)
+
+        if harmony_tokens is not None:
+            harmony_emb = self.harmony_embedding(harmony_tokens)
+        else:
+            harmony_emb = torch.zeros(
+                B, self.grid_length, self.d_model, device=device
+            )
+
+        # melody to encoder
+        melody_encoded = self.encoder(melody_emb)
+        melody_encoded = self.output_norm(melody_encoded)
+
+        # harmony to decoder
+        harmony_emb = harmony_emb + self.shared_pos
+        harmony_emb = self.input_norm(harmony_emb)
+        harmony_emb = self.dropout(harmony_emb)
+        encoded = harmony_emb
+        
+        if get_layers_output:
+            layers_output = {}
+        for i, layer in enumerate(self.decoder_layers):
+            encoded = layer(
+                encoded,
+                melody_encoded,
+                src_mask=self.tgt_mask
+            )
+            # capture layer output
+            if get_layers_output:
+                layers_output[i] = encoded.mean(axis=1).unsqueeze(1)
+            # guide process
+            if steering_vectors is not None and i in steering_vectors:
+                h = steering_vectors[i]
+                # ensure correct shape
+                if h.dim() == 2:  # (1, d_model)
+                    h = h.unsqueeze(1)  # (1,1,d_model)
+                encoded += alpha * h
+        encoded = self.output_norm(encoded)
+
+        harmony_logits = self.output_head(
+            encoded
+        )
+
+        if get_layers_output:
+            return harmony_logits, layers_output
+        else:
+            return harmony_logits
+    # end forward
+
+    def generate_square_subsequent_mask(self, sz):
+        mask = torch.triu(torch.ones(sz, sz, device=self.device), diagonal=1)
+        mask = mask.masked_fill(mask == 1, float('-inf'))
+        return mask
+    # end generate_square_subsequent_mask
+
+    # def freeze_base(self):
+    #     for param in self.parameters():
+    #         param.requires_grad = False
+    #     for m in self.film_layers:
+    #         for param in m.parameters():
+    #             param.requires_grad = True
+    # # end freeze_base
+
+    # def freeze_FiLM(self):
+    #     for param in self.parameters():
+    #         param.requires_grad = True
+    #     for m in self.film_layers:
+    #         for param in m.parameters():
+    #             param.requires_grad = False
+    # # end freeze_FiLM
+
+    # def unfreeze_all(self):
+    #     for param in self.parameters():
+    #         param.requires_grad = True
+    # # end unfreeze_all
+
+    # def film_parameters(self):
+    #     for m in self.film_layers:
+    #         yield from m.parameters()
+    # # end film_parameters
+# end EDASModel

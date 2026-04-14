@@ -5,7 +5,7 @@ from music21 import harmony, stream, metadata, chord, note, key, meter, tempo, d
 import mir_eval
 import numpy as np
 from copy import deepcopy
-from models import SEFiLMModel, EDFiLMModel, SEASModel
+from models import SEFiLMModel, EDFiLMModel, SEASModel, EDASModel
 import os
 from music_utils import transpose_score
 
@@ -597,3 +597,33 @@ def load_SEASModel(
     transformer_model.eval()
     return transformer_model
 # end load_SEASModel
+
+def load_EDASModel(
+        tokenizer,
+        device_name,
+        d_model=512
+    ):
+    if device_name == 'cpu':
+        device = torch.device('cpu')
+    else:
+        if torch.cuda.is_available():
+            device = torch.device(device_name)
+        else:
+            print('Selected device not available: ' + device_name)
+    # end device selection
+    transformer_model = EDASModel(
+        chord_vocab_size=len(tokenizer.vocab),
+        d_model=d_model,
+        nhead=4,
+        num_layers=4,
+        grid_length=80,
+        pianoroll_dim=tokenizer.pianoroll_dim,
+        guidance_dim=d_model,
+        device=device,
+    )
+    checkpoint = torch.load('saved_models/iplg/ED/iplg_l_loss.pt', map_location=device_name)
+    transformer_model.load_state_dict(checkpoint)
+    transformer_model.to(device)
+    transformer_model.eval()
+    return transformer_model
+# end load_EDASModel

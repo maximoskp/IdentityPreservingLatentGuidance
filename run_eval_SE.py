@@ -55,79 +55,79 @@ for data_files in [
     results_unique = {}
     results_conf = {}
 
-    # for loss_scheme in ['f', 'fh', 'fhl', 'fl', 'hl', 'l']:
-    #     d_model = 512
-    #     transformer_model = SEFiLMModel(
-    #         chord_vocab_size=len(tokenizer.vocab),
-    #         d_model=d_model,
-    #         nhead=8,
-    #         num_layers=8,
-    #         grid_length=80,
-    #         pianoroll_dim=tokenizer.pianoroll_dim,
-    #         guidance_dim=d_model,
-    #         device=device,
-    #     )
-    #     checkpoint = torch.load(f'saved_models/iplg/SE/iplg_{loss_scheme}_loss.pt', map_location=device_name)
-    #     transformer_model.load_state_dict(checkpoint)
-    #     transformer_model.to(device)
-    #     transformer_model.eval()
+    for loss_scheme in ['f', 'fh', 'fhl', 'fl', 'hl', 'l']:
+        d_model = 512
+        transformer_model = SEFiLMModel(
+            chord_vocab_size=len(tokenizer.vocab),
+            d_model=d_model,
+            nhead=8,
+            num_layers=8,
+            grid_length=80,
+            pianoroll_dim=tokenizer.pianoroll_dim,
+            guidance_dim=d_model,
+            device=device,
+        )
+        checkpoint = torch.load(f'saved_models/iplg/SE/iplg_{loss_scheme}_loss.pt', map_location=device_name)
+        transformer_model.load_state_dict(checkpoint)
+        transformer_model.to(device)
+        transformer_model.eval()
 
-    #     eval_latent, eval_logits, eval_unique, eval_conf = evaluate_iplg_convergence(
-    #         transformer_model,
-    #         home_dataset,
-    #         foreign_dataset,
-    #         logits_loss_fn,
-    #         latent_loss_fn,
-    #         mask_token_id,
-    #         bar_token_id,
-    #         device,
-    #         interpolate=False,
-    #         extrapolate=False
-    #     )
-    #     print(loss_scheme, ' ------------- ')
-    #     # pprint(eval_dict)
-    #     results_latent[loss_scheme] = eval_latent
-    #     results_logits[loss_scheme] = eval_logits
-    #     results_unique[loss_scheme] = eval_unique
-    #     results_conf[loss_scheme] = eval_conf
+        eval_latent, eval_logits, eval_unique, eval_conf = evaluate_iplg_convergence(
+            transformer_model,
+            home_dataset,
+            foreign_dataset,
+            logits_loss_fn,
+            latent_loss_fn,
+            mask_token_id,
+            bar_token_id,
+            device,
+            interpolate=False,
+            extrapolate=False
+        )
+        print(loss_scheme, ' ------------- ')
+        # pprint(eval_dict)
+        results_latent[loss_scheme] = eval_latent
+        results_logits[loss_scheme] = eval_logits
+        results_unique[loss_scheme] = eval_unique
+        results_conf[loss_scheme] = eval_conf
 
-    # main_results_path = 'results/SE/guidance_eval'
-    # os.makedirs(main_results_path, exist_ok=True)
-    # df = pd.DataFrame(results_latent)
-    # df = df.T
-    # df.to_csv(f'{main_results_path}/latent_{data_files[0]}_{data_files[1]}.csv', float_format='%.6f')
-    # latex_table = df.to_latex(float_format="%.6f")
-    # with open(f'{main_results_path}/latent_{data_files[0]}_{data_files[1]}.tex', "w") as f:
-    #     f.write(latex_table)
-    # print(df)
+    main_results_path = 'results/SE/guidance_eval'
+    os.makedirs(main_results_path, exist_ok=True)
+    df = pd.DataFrame(results_latent)
+    df = df.T
+    df.to_csv(f'{main_results_path}/latent_{data_files[0]}_{data_files[1]}.csv', float_format='%.6f')
+    latex_table = df.to_latex(float_format="%.6f")
+    with open(f'{main_results_path}/latent_{data_files[0]}_{data_files[1]}.tex', "w") as f:
+        f.write(latex_table)
+    print(df)
 
-    # df = pd.DataFrame(results_logits)
-    # df = df.T
-    # df.to_csv(f'{main_results_path}/logits_{data_files[0]}_{data_files[1]}.csv', float_format='%.6f')
-    # latex_table = df.to_latex(float_format="%.6f")
-    # with open(f'{main_results_path}/logits_{data_files[0]}_{data_files[1]}.tex', "w") as f:
-    #     f.write(latex_table)
-    # print(df)
+    df = pd.DataFrame(results_logits)
+    df = df.T
+    df.to_csv(f'{main_results_path}/logits_{data_files[0]}_{data_files[1]}.csv', float_format='%.6f')
+    latex_table = df.to_latex(float_format="%.6f")
+    with open(f'{main_results_path}/logits_{data_files[0]}_{data_files[1]}.tex', "w") as f:
+        f.write(latex_table)
+    print(df)
 
-    # df = pd.DataFrame(results_unique)
-    # df = df.T
-    # df['foreign_strength'] = df['fguide_funique'] / df['fguide_hunique']
-    # df['home_strength'] = df['hguide_hunique'] / df['hguide_funique']
-    # df.to_csv(f'{main_results_path}/unique_{data_files[0]}_{data_files[1]}.csv', float_format='%.2f')
-    # latex_table = df.to_latex(float_format="%.2f")
-    # with open(f'{main_results_path}/unique_{data_files[0]}_{data_files[1]}.tex', "w") as f:
-    #     f.write(latex_table)
-    # print(df)
+    df = pd.DataFrame(results_unique)
+    df = df.T
+    df['foreign_strength'] = df['fguide_funique'] / df['fguide_hunique']
+    df['home_strength'] = df['hguide_hunique'] / df['hguide_funique']
+    df.to_csv(f'{main_results_path}/unique_{data_files[0]}_{data_files[1]}.csv', float_format='%.2f')
+    latex_table = df.to_latex(float_format="%.2f")
+    with open(f'{main_results_path}/unique_{data_files[0]}_{data_files[1]}.tex', "w") as f:
+        f.write(latex_table)
+    print(df)
 
-    # df = pd.DataFrame(results_conf)
-    # df = df.T
-    # # df['foreign_strength'] = df['confident_fguide_funique'] / df['confident_fguide_hunique']
-    # # df['home_strength'] = df['confident_hguide_hunique'] / df['confident_hguide_funique']
-    # df.to_csv(f'{main_results_path}/conf_{data_files[0]}_{data_files[1]}.csv', float_format='%.2f')
-    # latex_table = df.to_latex(float_format="%.2f")
-    # with open(f'{main_results_path}/conf_{data_files[0]}_{data_files[1]}.tex', "w") as f:
-    #     f.write(latex_table)
-    # print(df)
+    df = pd.DataFrame(results_conf)
+    df = df.T
+    # df['foreign_strength'] = df['confident_fguide_funique'] / df['confident_fguide_hunique']
+    # df['home_strength'] = df['confident_hguide_hunique'] / df['confident_hguide_funique']
+    df.to_csv(f'{main_results_path}/conf_{data_files[0]}_{data_files[1]}.csv', float_format='%.2f')
+    latex_table = df.to_latex(float_format="%.2f")
+    with open(f'{main_results_path}/conf_{data_files[0]}_{data_files[1]}.tex', "w") as f:
+        f.write(latex_table)
+    print(df)
 
     # ==================== ActiSteer results =========================
     d_model = 512
