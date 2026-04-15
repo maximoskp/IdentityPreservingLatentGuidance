@@ -16,6 +16,8 @@ os.makedirs(results_base_path, exist_ok=True)
 
 device_name = 'cuda:0'
 
+temperature = 0.5
+
 tokenizer = CSGridMLMTokenizer(
     fixed_length=80,
     quantization='4th',
@@ -46,8 +48,8 @@ model = load_EDASModel(
 results_bin_all = {}
 results_dist_all = {}
 
-for layers_to_steer in [ [1,2], [2,3], [1,2,3], [0,1,2,3] ]:
-    for alpha in [0.5, 1.0, 2.5, 5.0, 7.0, 10.0, 20.0]:
+for layers_to_steer in [ [1,2], [0,1,2,3] ]:
+    for alpha in [2.5, 5.0]:
         folder_name = 'layers_' + \
             str(layers_to_steer).replace(', ','_').replace('[', '').replace(']', '') + \
             '_alpha_' + str(alpha).replace('.', '_')
@@ -100,7 +102,7 @@ for layers_to_steer in [ [1,2], [2,3], [1,2,3], [0,1,2,3] ]:
                     use_constraints=False,
                     intertwine_bar_info=True, # no bar default
                     normalize_tonality=False,
-                    temperature=1.0,
+                    temperature=temperature,
                     p=0.9,
                     unmasking_order='start',
                     create_gen = loss_scheme != 'real',
@@ -110,22 +112,25 @@ for layers_to_steer in [ [1,2], [2,3], [1,2,3], [0,1,2,3] ]:
                 # midi out path
                 midi_out_path = os.path.join(midi_folder_out, 'gen_' + name_suffix + '.mid')
 
-                # compute metrics
-                source_metrics = compute_all_metrics(input_f_path)
-                target_metrics = compute_all_metrics(guide_f_path)
-                gen_metrics = compute_all_metrics(midi_out_path)
+                try:
+                    # compute metrics
+                    source_metrics = compute_all_metrics(input_f_path)
+                    target_metrics = compute_all_metrics(guide_f_path)
+                    gen_metrics = compute_all_metrics(midi_out_path)
 
-                # CHE CC CTD CTnCTR PCS MCTD HRHE HRC CBS
-                num_gen += 1
-                bin_out, dist_diff = source_target_distances(gen_metrics, source_metrics, target_metrics)
-                for k, v in bin_out.items():
-                    if k in bin_all.keys():
-                        bin_all[k] += bin_out[k]
-                        dist_all[k] += dist_diff[k]
-                    else:
-                        bin_all[k] = bin_out[k]
-                        dist_all[k] = dist_diff[k]
-                # end for items
+                    # CHE CC CTD CTnCTR PCS MCTD HRHE HRC CBS
+                    num_gen += 1
+                    bin_out, dist_diff = source_target_distances(gen_metrics, source_metrics, target_metrics)
+                    for k, v in bin_out.items():
+                        if k in bin_all.keys():
+                            bin_all[k] += bin_out[k]
+                            dist_all[k] += dist_diff[k]
+                        else:
+                            bin_all[k] = bin_out[k]
+                            dist_all[k] = dist_diff[k]
+                    # end for items
+                except:
+                    print(f'problem with file: {midi_out_path}')
             # end for g_idx counter
         # end for h_idx counter
     # make average metrics

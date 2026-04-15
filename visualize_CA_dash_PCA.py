@@ -422,7 +422,7 @@ def run_harmonization(n_clicks, selected):
         use_constraints=False,
         intertwine_bar_info=True, # no bar default
         normalize_tonality=False,
-        temperature=0.5,
+        temperature=0.3,
         p=0.9,
         unmasking_order='certain',
         create_gen = True,

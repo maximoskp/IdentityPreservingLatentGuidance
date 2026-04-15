@@ -8,6 +8,8 @@ from models import SEFiLMModel
 
 device_name = 'cuda:0'
 
+temperature = 0.5
+
 tokenizer = CSGridMLMTokenizer(
     fixed_length=80,
     quantization='4th',
@@ -79,7 +81,7 @@ for name in model_names:
                 use_constraints=False,
                 intertwine_bar_info=True, # no bar default
                 normalize_tonality=False,
-                temperature=1.0,
+                temperature=temperature,
                 p=0.9,
                 unmasking_order='certain',
                 create_gen = True,

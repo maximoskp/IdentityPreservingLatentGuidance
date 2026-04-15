@@ -9,12 +9,12 @@
 scripts=(
     "generate_avg_SE_nott2gjt.py"
     "generate_avg_SE_gjt2nott.py"
-    "generate_avg_SEAS_nott2gjt.py"
-    "generate_avg_SEAS_gjt2nott.py"
+    # "generate_avg_SEAS_nott2gjt.py"
+    # "generate_avg_SEAS_gjt2nott.py"
     "generate_avg_ED_nott2gjt.py"
     "generate_avg_ED_gjt2nott.py"
-    "generate_avg_EDAS_nott2gjt.py"
-    "generate_avg_EDAS_gjt2nott.py"
+    # "generate_avg_EDAS_nott2gjt.py"
+    # "generate_avg_EDAS_gjt2nott.py"
 )
 
 # Name of the conda environment

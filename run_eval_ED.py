@@ -54,7 +54,7 @@ for data_files in [
     results_unique = {}
     results_conf= {}
 
-    for loss_scheme in ['f', 'fh', 'fhl', 'fl', 'hl', 'l']:
+    for loss_scheme in ['fhl', 'l']:# ['f', 'fh', 'fhl', 'fl', 'hl', 'l']:
         d_model = 512
         transformer_model = EDFiLMModel(
             chord_vocab_size=len(tokenizer.vocab),
@@ -150,11 +150,10 @@ for data_files in [
 
     logits_all = {}
     confidence_all = {}
-    for layers_to_steer in [ [1], [2], [3], [1,2], [2,3], [1,2,3], [0,1,2,3] ]:
+    for layers_to_steer in [ [1,2], [0,1,2,3] ]:
         layers_logits = {}
         layers_confidence = {}
-        # for alpha in [0.1, 0.3, 0.5, 0.7, 1.0, 1.5]:
-        for alpha in [0.1, 0.5, 1.0, 1.5, 2.5, 5.0, 7.0, 10.0, 12.5, 15.0, 20.0]:
+        for alpha in [2.5, 5.0]:
             print(f'actisteer: {data_files[0]} - {data_files[0]}')
             print(f'{layers_to_steer} - {alpha}')
             logits_res, confidence_res = evaluate_actisteer_convergence(

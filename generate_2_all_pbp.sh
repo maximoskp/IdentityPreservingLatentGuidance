@@ -9,12 +9,12 @@
 scripts=(
     "generate_pbp_SE_nott2gjt.py"
     "generate_pbp_SE_gjt2nott.py"
-    "generate_pbp_SEAS_nott2gjt.py"
-    "generate_pbp_SEAS_gjt2nott.py"
+    # "generate_pbp_SEAS_nott2gjt.py"
+    # "generate_pbp_SEAS_gjt2nott.py"
     "generate_pbp_ED_nott2gjt.py"
     "generate_pbp_ED_gjt2nott.py"
-    "generate_pbp_EDAS_nott2gjt.py"
-    "generate_pbp_EDAS_gjt2nott.py"
+    # "generate_pbp_EDAS_nott2gjt.py"
+    # "generate_pbp_EDAS_gjt2nott.py"
 )
 
 # Name of the conda environment

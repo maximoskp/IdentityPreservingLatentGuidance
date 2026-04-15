@@ -8,6 +8,8 @@ import torch
 
 device_name = 'cuda:0'
 
+temperature = 0.5
+
 tokenizer = CSGridMLMTokenizer(
     fixed_length=80,
     quantization='4th',
@@ -31,8 +33,8 @@ model = load_EDASModel(
     d_model=512
 )
 
-for layers_to_steer in [ [1,2], [2,3], [1,2,3], [0,1,2,3] ]:
-    for alpha in [0.5, 1.0, 2.5, 5.0, 7.0, 10.0, 20.0]:
+for layers_to_steer in [ [1,2], [0,1,2,3] ]:
+    for alpha in [2.5, 5.0]:
         folder_name = 'layers_' + \
             str(layers_to_steer).replace(', ','_').replace('[', '').replace(']', '') + \
             '_alpha_' + str(alpha).replace('.', '_')
@@ -77,7 +79,7 @@ for layers_to_steer in [ [1,2], [2,3], [1,2,3], [0,1,2,3] ]:
                 use_constraints=False,
                 intertwine_bar_info=True, # no bar default
                 normalize_tonality=False,
-                temperature=1.0,
+                temperature=temperature,
                 p=0.9,
                 unmasking_order='start',
                 create_gen = loss_scheme != 'real',

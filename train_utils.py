@@ -1091,8 +1091,8 @@ def train_IPLG(
 
                 optimizer.zero_grad()
                 loss = ('f' in loss_scheme)*foreign_guidance_loss + \
-                    0.25*('h' in loss_scheme)*home_guidance_loss + \
-                    0.05*('l' in loss_scheme)*logits_loss
+                    1.0*('h' in loss_scheme)*home_guidance_loss + \
+                    0.1*('l' in loss_scheme)*logits_loss
                 loss.backward()
                 optimizer.step()
                 # scheduler.step()

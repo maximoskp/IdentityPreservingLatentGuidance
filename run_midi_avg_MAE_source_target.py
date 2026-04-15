@@ -1128,6 +1128,8 @@ def compute_and_save_html_results_by_setup(
     print(f"HTML results saved to {output_html}")
     df_means_full.to_csv(output_html.replace('.html', '_means.csv'), index=False)
     print(f"Means CSV results saved to {output_html.replace('.html', '_means.csv')}")
+    metric_cols = df_mae_full.columns.drop('Instance')
+    df_mae_full['avg'] = df_mae_full[metric_cols].mean(axis=1)
     df_mae_full.to_csv(output_html.replace('.html', '_mae.csv'), index=False)
     print(f"MAE CSV results saved to {output_html.replace('.html', '_mae.csv')}")
 

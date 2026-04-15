@@ -8,6 +8,8 @@ import torch
 
 device_name = 'cuda:0'
 
+temperature = 0.5
+
 tokenizer = CSGridMLMTokenizer(
     fixed_length=80,
     quantization='4th',
@@ -30,7 +32,8 @@ for item in foreign_dataset:
 guidance_vec /= len(foreign_dataset)
 guidance_vec = guidance_vec.unsqueeze(dim=0)
 
-for loss_scheme in ['real', 'none', 'f', 'fh', 'fhl', 'hl', 'l']:
+# for loss_scheme in ['real', 'none', 'f', 'fh', 'fhl', 'hl', 'l']:
+for loss_scheme in ['real', 'none', 'fhl','l']:
     print(f'loss scheme: {loss_scheme}')
     for i in tqdm(range(len(midi_files))):
         # item = foreign_dataset[i % len(foreign_dataset)]
@@ -71,7 +74,7 @@ for loss_scheme in ['real', 'none', 'f', 'fh', 'fhl', 'hl', 'l']:
             use_constraints=False,
             intertwine_bar_info=True, # no bar default
             normalize_tonality=False,
-            temperature=1.0,
+            temperature=temperature,
             p=0.9,
             unmasking_order='certain',
             create_gen = loss_scheme != 'real',

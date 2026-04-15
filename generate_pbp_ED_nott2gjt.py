@@ -16,6 +16,8 @@ os.makedirs(results_base_path, exist_ok=True)
 
 device_name = 'cuda:0'
 
+temperature = 0.5
+
 tokenizer = CSGridMLMTokenizer(
     fixed_length=80,
     quantization='4th',
@@ -36,7 +38,8 @@ guide_idxs = {}
 for i in range(len(source_files)):
     guide_idxs[i] = np.random.permutation(len(target_files))[:num_guides_per_piece]
 
-loss_schemes = ['f', 'fh', 'fhl', 'hl', 'l']
+# loss_schemes = ['f', 'fh', 'fhl', 'hl', 'l']
+loss_schemes = ['fhl', 'l']
 
 results_bin_all = {}
 results_dist_all = {}
@@ -88,7 +91,7 @@ for loss_scheme in loss_schemes:
                 use_constraints=False,
                 intertwine_bar_info=True, # no bar default
                 normalize_tonality=False,
-                temperature=1.0,
+                temperature=temperature,
                 p=0.9,
                 unmasking_order='start',
                 create_gen = loss_scheme != 'real',
