@@ -1131,6 +1131,9 @@ def compute_and_save_html_results_by_setup(
     metric_cols = df_mae_full.columns.drop('Instance')
     df_mae_full['avg'] = df_mae_full[metric_cols].mean(axis=1)
     df_mae_full.to_csv(output_html.replace('.html', '_mae.csv'), index=False)
+    latex_table = df_mae_full.to_latex(float_format="%.4f")
+    with open(output_html.replace('.html', '_mae.tex'), "w") as f:
+        f.write(latex_table)
     print(f"MAE CSV results saved to {output_html.replace('.html', '_mae.csv')}")
 
 if __name__ == "__main__":

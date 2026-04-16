@@ -1,5 +1,6 @@
 ,confident_fguide_hunique,confident_fguide_funique,confident_hguide_hunique,confident_hguide_funique
-fhl_0_1,0.39,32.26,16.67,0.35
-fhl_0_15,0.41,30.82,15.43,0.31
-fhl_0_2,0.37,30.11,14.24,0.36
-l_loss,2.28,15.03,14.30,1.10
+fhl_0_1,0.38,32.41,16.77,0.32
+fhl_0_15,0.44,31.75,15.69,0.32
+fhl_0_2,0.46,30.23,14.48,0.42
+l_loss,2.38,14.90,14.44,1.08
+f_loss,0.00,39.41,4.12,0.00
