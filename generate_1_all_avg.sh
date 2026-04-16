@@ -18,9 +18,9 @@ scripts=(
     "generate_avg_ED_nott2gjt.py -l 0.1 -t 0.5 -g 0"
     "generate_avg_ED_nott2gjt.py -l 0.15 -t 0.5 -g 0"
     "generate_avg_ED_nott2gjt.py -l 0.2 -t 0.5 -g 0"
-    "generate_avg_ED_gjt2nott.py -l 0.1 -t 0.5 -g 0"
-    "generate_avg_ED_gjt2nott.py -l 0.15 -t 0.5 -g 0"
-    "generate_avg_ED_gjt2nott.py -l 0.2 -t 0.5 -g 0"
+    # "generate_avg_ED_gjt2nott.py -l 0.1 -t 0.5 -g 0"
+    # "generate_avg_ED_gjt2nott.py -l 0.15 -t 0.5 -g 0"
+    # "generate_avg_ED_gjt2nott.py -l 0.2 -t 0.5 -g 0"
     # "generate_avg_EDAS_nott2gjt.py"
     # "generate_avg_EDAS_gjt2nott.py"
 )

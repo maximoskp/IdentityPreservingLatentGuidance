@@ -64,7 +64,8 @@ def main():
         guide_idxs[i] = np.random.permutation(len(target_files))[:num_guides_per_piece]
 
     # loss_schemes = ['f', 'fh', 'fhl', 'hl', 'l']
-    loss_schemes = ['fhl', 'l', 'f']
+    # loss_schemes = ['fhl', 'l', 'f']
+    loss_schemes = ['fhl']
 
     results_bin_all = {}
     results_dist_all = {}
@@ -103,7 +104,7 @@ def main():
                         logits_lambda=logits_lambda,
                         d_model=512
                     )
-                    folder_suffix = str(loss_scheme).replace('.', '_')
+                    folder_suffix = str(logits_lambda).replace('.', '_')
                     midi_folder_out = f'MIDIs/nott2jazz_pbp/{prefix}{loss_scheme}_{folder_suffix}'
                     name_suffix = (loss_scheme == 'real' or loss_scheme == 'none')*str(h_idx) + \
                         (loss_scheme != 'real' and loss_scheme != 'none')*f'h{h_idx}_g{g_idx}'

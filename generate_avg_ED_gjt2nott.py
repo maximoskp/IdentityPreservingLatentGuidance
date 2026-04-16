@@ -53,8 +53,9 @@ def main():
     guidance_vec /= len(foreign_dataset)
     guidance_vec = guidance_vec.unsqueeze(dim=0)
 
-    # for loss_scheme in ['real', 'none', 'f', 'fh', 'fhl', 'hl', 'l']:
-    for loss_scheme in ['real', 'none', 'fhl','l', 'f']:
+    # loss_schemes = ['real', 'none', 'fhl','l', 'f']
+    loss_schemes = ['fhl']
+    for loss_scheme in loss_schemes:
         print(f'loss scheme: {loss_scheme}')
         for i in tqdm(range(len(midi_files))):
             # item = foreign_dataset[i % len(foreign_dataset)]

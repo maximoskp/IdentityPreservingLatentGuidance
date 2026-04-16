@@ -53,8 +53,9 @@ def main():
     guidance_vec /= len(foreign_dataset)
     guidance_vec = guidance_vec.unsqueeze(dim=0)
 
-    # for loss_scheme in ['real', 'none', 'f', 'fh', 'fhl', 'hl', 'l']:
-    for loss_scheme in ['real', 'none', 'fhl','l', 'f']:
+    # loss_schemes = ['real', 'none', 'fhl','l', 'f']
+    loss_schemes = ['fhl']
+    for loss_scheme in loss_schemes:
         print(f'loss scheme: {loss_scheme}')
         for i in tqdm(range(len(midi_files))):
             # item = foreign_dataset[i % len(foreign_dataset)]
@@ -83,7 +84,7 @@ def main():
                     logits_lambda=logits_lambda,
                     d_model=512
                 )
-                folder_suffix = str(loss_scheme).replace('.', '_')
+                folder_suffix = str(logits_lambda).replace('.', '_')
                 midi_folder_out = f'MIDIs/nott2jazz/{prefix}{loss_scheme}_{folder_suffix}'
                 name_suffix = (loss_scheme == 'real' or loss_scheme == 'none')*str(h_idx) + \
                     (loss_scheme != 'real' and loss_scheme != 'none')*f'{h_idx}'
