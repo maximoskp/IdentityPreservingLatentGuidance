@@ -7,12 +7,20 @@
 
 # List of Python scripts with their respective arguments
 scripts=(
-    "generate_pbp_SE_nott2gjt.py"
-    "generate_pbp_SE_gjt2nott.py"
+    "generate_pbp_SE_nott2gjt.py -l 0.1 -t 0.5 -g 0"
+    "generate_pbp_SE_nott2gjt.py -l 0.15 -t 0.5 -g 0"
+    "generate_pbp_SE_nott2gjt.py -l 0.2 -t 0.5 -g 0"
+    "generate_pbp_SE_gjt2nott.py -l 0.1 -t 0.5 -g 0"
+    "generate_pbp_SE_gjt2nott.py -l 0.15 -t 0.5 -g 0"
+    "generate_pbp_SE_gjt2nott.py -l 0.2 -t 0.5 -g 0"
     # "generate_pbp_SEAS_nott2gjt.py"
     # "generate_pbp_SEAS_gjt2nott.py"
-    "generate_pbp_ED_nott2gjt.py"
-    "generate_pbp_ED_gjt2nott.py"
+    "generate_pbp_ED_nott2gjt.py -l 0.1 -t 0.5 -g 0"
+    "generate_pbp_ED_nott2gjt.py -l 0.15 -t 0.5 -g 0"
+    "generate_pbp_ED_nott2gjt.py -l 0.2 -t 0.5 -g 0"
+    "generate_pbp_ED_gjt2nott.py -l 0.1 -t 0.5 -g 0"
+    "generate_pbp_ED_gjt2nott.py -l 0.15 -t 0.5 -g 0"
+    "generate_pbp_ED_gjt2nott.py -l 0.2 -t 0.5 -g 0"
     # "generate_pbp_EDAS_nott2gjt.py"
     # "generate_pbp_EDAS_gjt2nott.py"
 )

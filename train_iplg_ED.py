@@ -19,6 +19,7 @@ def main():
 
     # Define arguments
     parser.add_argument('-s', '--loss_scheme', type=str, help='Loss scheme: "fhl" means foreign, home and loss. Remove letters to keep parts of loss.', required=False)
+    parser.add_argument('-t', '--logits_lambda', type=float, help='Logits lambda: the multiplier for the logits loss.', required=False)
     parser.add_argument('-g', '--gpu', type=int, help='Specify whether and which GPU will be used by used by index. Not using this argument means use CPU.', required=False)
     parser.add_argument('-e', '--epochs', type=int, help='Specify number of epochs. Defaults to 100.', required=False)
     parser.add_argument('-l', '--learningrate', type=float, help='Specify learning rate. Defaults to 1e-5.', required=False)
@@ -29,6 +30,9 @@ def main():
     loss_scheme = 'fhl'
     if args.loss_scheme:
         loss_scheme = args.loss_scheme
+    logits_lambda = 0.1
+    if args.logits_lambda:
+        logits_lambda = args.logits_lambda
     lr = 1e-5
     device_name = 'cpu'
     if args.gpu is not None:
@@ -131,7 +135,8 @@ def main():
     optimizer = AdamW(transformer_model.film_parameters(), lr=lr)
 
     # save results
-    results_path = os.path.join( 'results', 'iplg', 'ED', f'iplg_{loss_scheme}_loss.csv' )
+    name_suffix = str(logits_lambda).replace('.', '_')
+    results_path = os.path.join( 'results', 'iplg', 'ED', f'iplg_{loss_scheme}_{name_suffix}.csv' )
     os.makedirs('results', exist_ok=True)
     os.makedirs('results/iplg', exist_ok=True)
     os.makedirs('results/iplg/ED', exist_ok=True)
@@ -140,13 +145,14 @@ def main():
     os.makedirs('saved_models/iplg/', exist_ok=True)
     os.makedirs('saved_models/iplg/ED', exist_ok=True)
     save_dir = 'saved_models/iplg/ED/'
-    transformer_path = save_dir + f'iplg_{loss_scheme}_loss.pt'
+    transformer_path = save_dir + f'iplg_{loss_scheme}_{name_suffix}.pt'
 
     train_IPLG(
         transformer_model, 
         latent_loss_fn, logits_loss_fn,
         optimizer, train_loader, val_loader, tokenizer.mask_token_id,
         epochs=epochs,
+        logits_lambda=logits_lambda,
         exponent=-1,
         results_path=results_path,
         transformer_path=transformer_path,

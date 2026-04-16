@@ -190,6 +190,7 @@ def load_SEFiLMModel(
         tokenizer,
         loss_scheme,
         device_name,
+        logits_lambda=None,
         d_model=512
     ):
     if device_name == 'cpu':
@@ -200,6 +201,10 @@ def load_SEFiLMModel(
         else:
             print('Selected device not available: ' + device_name)
     # end device selection
+    if logits_lambda is None:
+        suffix = 'loss'
+    else:
+        suffix = str(logits_lambda).replace('.', '_')
     transformer_model = SEFiLMModel(
         chord_vocab_size=len(tokenizer.vocab),
         d_model=d_model,
@@ -210,7 +215,7 @@ def load_SEFiLMModel(
         guidance_dim=d_model,
         device=device,
     )
-    checkpoint = torch.load(f'saved_models/iplg/SE/iplg_{loss_scheme}_loss.pt', map_location=device_name)
+    checkpoint = torch.load(f'saved_models/iplg/SE/iplg_{loss_scheme}_{suffix}.pt', map_location=device_name)
     transformer_model.load_state_dict(checkpoint)
     transformer_model.to(device)
     transformer_model.eval()
@@ -233,6 +238,7 @@ def load_EDFiLMModel(
         tokenizer,
         loss_scheme,
         device_name,
+        logits_lambda=None,
         d_model=512
     ):
     if device_name == 'cpu':
@@ -243,6 +249,10 @@ def load_EDFiLMModel(
         else:
             print('Selected device not available: ' + device_name)
     # end device selection
+    if logits_lambda is None:
+        suffix = 'loss'
+    else:
+        suffix = str(logits_lambda).replace('.', '_')
     transformer_model = EDFiLMModel(
         chord_vocab_size=len(tokenizer.vocab),
         d_model=d_model,
@@ -253,7 +263,7 @@ def load_EDFiLMModel(
         guidance_dim=d_model,
         device=device,
     )
-    checkpoint = torch.load(f'saved_models/iplg/ED/iplg_{loss_scheme}_loss.pt', map_location=device_name)
+    checkpoint = torch.load(f'saved_models/iplg/ED/iplg_{loss_scheme}_{suffix}.pt', map_location=device_name)
     transformer_model.load_state_dict(checkpoint)
     transformer_model.to(device)
     transformer_model.eval()

@@ -999,6 +999,7 @@ def train_IPLG(
         latent_loss_fn, logits_loss_fn,
         optimizer, trainloader, valloader, mask_token_id,
         epochs=100,
+        logits_lambda=0.1,
         exponent=-1,
         results_path=None,
         transformer_path=None,
@@ -1091,8 +1092,8 @@ def train_IPLG(
 
                 optimizer.zero_grad()
                 loss = ('f' in loss_scheme)*foreign_guidance_loss + \
-                    1.0*('h' in loss_scheme)*home_guidance_loss + \
-                    0.1*('l' in loss_scheme)*logits_loss
+                    ('h' in loss_scheme)*home_guidance_loss + \
+                    logits_lambda*('l' in loss_scheme)*logits_loss
                 loss.backward()
                 optimizer.step()
                 # scheduler.step()

@@ -55,7 +55,7 @@ for data_files in [
     results_unique = {}
     results_conf = {}
 
-    for loss_scheme in ['fhl', 'l']:# ['f', 'fh', 'fhl', 'fl', 'hl', 'l']:
+    for loss_scheme in ['fhl_0_1','fhl_0_15','fhl_0_2', 'l_loss', 'f_loss']:# ['f', 'fh', 'fhl', 'fl', 'hl', 'l']:
         d_model = 512
         transformer_model = SEFiLMModel(
             chord_vocab_size=len(tokenizer.vocab),
@@ -67,7 +67,7 @@ for data_files in [
             guidance_dim=d_model,
             device=device,
         )
-        checkpoint = torch.load(f'saved_models/iplg/SE/iplg_{loss_scheme}_loss.pt', map_location=device_name)
+        checkpoint = torch.load(f'saved_models/iplg/SE/iplg_{loss_scheme}.pt', map_location=device_name)
         transformer_model.load_state_dict(checkpoint)
         transformer_model.to(device)
         transformer_model.eval()
